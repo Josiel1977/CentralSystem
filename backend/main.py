@@ -8,14 +8,12 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from supabase import Client, create_client
 
-# Inicialização do FastAPI
 app = FastAPI(
     title="Premazon - Central System",
-    description="Sistema Integrado de Gestão de Estoques, PPCP, Automação Industrial e Apontamento de Metas (Planix Integration)",
-    version="1.1.0"
+    description="Sistema Integrado de Gestão de Estoques, PPCP, Automação Industrial e Apontamento de Metas (Planix)",
+    version="1.2.0"
 )
 
-# Habilita CORS total para Vercel e chamadas locais
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,7 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Leitura flexível das chaves do Supabase
 SUPABASE_URL = (
     os.getenv("NEXT_PUBLIC_SUPABASE_URL") or 
     os.getenv("SUPABASE_URL") or 
@@ -43,12 +40,9 @@ except Exception as err:
     print(f"Aviso: Falha ao inicializar o Supabase: {err}")
     supabase = None
 
-# Resolução de caminhos para a página principal (index.html)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 
-
-# --- MODELOS PYDANTIC ---
 
 class ItemAbastecimento(BaseModel):
     central_id: int = 1
@@ -59,16 +53,15 @@ class ItemAbastecimento(BaseModel):
 
 
 class LancamentoProducao(BaseModel):
-    setor: str  # ESTRUTURA, POSTE, PAINEL, LAJE, OUTROS
-    peca_nome: str  # Ex: Poste Duplo T 11/1500, Laje Alveolar L20
-    fck_mpa: int = 30  # Resistência do concreto em MPa
+    setor: str
+    peca_nome: str
+    fck_mpa: int = 30
     qtd_pecas: int = 1
-    volume_m3: float  # Volume Realizado
-    meta_volume_m3: float  # Volume Planejado (Meta vinda do Planix/PPCP)
+    volume_m3: float
+    meta_volume_m3: float
     usuario: str = "Operador Produção"
 
 
-# Endereços Modbus dos Registradores de Escrita no CLP Delta
 REGS_ESCRITA = {
     "cimento": 248,
     "aditivo1": 252,
@@ -76,11 +69,8 @@ REGS_ESCRITA = {
 }
 
 
-# --- ROTAS PRINCIPAIS ---
-
 @app.get("/", response_class=HTMLResponse)
 def renderizar_index(request: Request):
-    """Entrega a interface web do Dashboard (index.html)."""
     index_path = os.path.join(PROJECT_ROOT, "index.html")
     if not os.path.exists(index_path):
         index_path = os.path.join(CURRENT_DIR, "index.html")
@@ -94,20 +84,13 @@ def renderizar_index(request: Request):
             return HTMLResponse(content=f"<h1>Erro ao ler index.html</h1><p>{str(e)}</p>", status_code=500)
 
     return HTMLResponse(
-        content=(
-            "<h2>API Premazon Central System Ativa na Nuvem</h2>"
-            f"<p>Arquivo index.html não localizado no caminho: <code>{index_path}</code></p>"
-            "<p>Acesse <a href='/docs'>/docs</a> para visualizar a documentação da API.</p>"
-        ),
+        content="<h2>API Premazon Central System Ativa na Nuvem</h2>",
         status_code=200
     )
 
 
-# --- ROTAS DE ESTOQUE E AUTOMAÇÃO ---
-
 @app.get("/api/estoque/centrais")
 def obter_estoque_centrais():
-    """Retorna o estado dos silos, valida status ONLINE/OFFLINE via Heartbeat de 60s e recupera o histórico."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Serviço Supabase não inicializado.")
 
@@ -117,7 +100,7 @@ def obter_estoque_centrais():
         res_historico = supabase.table("abastecimentos_ppcp") \
             .select("*") \
             .order("data_hora", desc=True) \
-            .limit(15) \
+            .limit(30) \
             .execute()
 
         res_pendentes = supabase.table("fila_comandos_ppcp") \
@@ -149,7 +132,6 @@ def obter_estoque_centrais():
                 ultima_att_str = item.get("ultima_atualizacao")
                 centrais[c_id]["ultima_atualizacao"] = ultima_att_str
 
-                # Validação de Heartbeat (máximo de 60 segundos de inatividade)
                 if ultima_att_str:
                     try:
                         dt_att = datetime.fromisoformat(ultima_att_str.replace("Z", "+00:00"))
@@ -183,7 +165,6 @@ def obter_estoque_centrais():
 
 @app.post("/api/abastecimento/enviar")
 def lancar_abastecimento(item: ItemAbastecimento):
-    """Insere o abastecimento de nota fiscal e registra a ordem na fila Modbus do CLP."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Serviço Supabase não inicializado.")
 
@@ -214,17 +195,14 @@ def lancar_abastecimento(item: ItemAbastecimento):
 
         return {
             "sucesso": True,
-            "mensagem": f"Nota Fiscal {item.numero_nota} gravada com sucesso! {item.quantidade} unidades enviadas para D{reg_alvo}."
+            "mensagem": f"Nota Fiscal {item.numero_nota} gravada por '{item.usuario}' com sucesso!"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao registrar abastecimento: {str(e)}")
 
 
-# --- NOVO MÓDULO: APONTAMENTO DE METAS E PRODUÇÃO POR PEÇA (PLANIX INTEGRATION) ---
-
 @app.post("/api/producao/apontar")
 def lancar_producao_diaria(item: LancamentoProducao):
-    """Grava o apontamento de peças/volume por setor e calcula o percentual de alcance da meta."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Serviço Supabase não inicializado.")
 
@@ -249,7 +227,7 @@ def lancar_producao_diaria(item: LancamentoProducao):
 
         return {
             "sucesso": True,
-            "mensagem": f"Lançamento de '{item.peca_nome}' gravado! Meta do setor {item.setor.upper()} em {percentual_meta}%.",
+            "mensagem": f"Lançamento de '{item.peca_nome}' gravado por '{item.usuario}'!",
             "percentual_meta": percentual_meta
         }
     except Exception as e:
@@ -258,12 +236,10 @@ def lancar_producao_diaria(item: LancamentoProducao):
 
 @app.get("/api/relatorios/metas-desempenho")
 def obter_relatorio_metas():
-    """Consolida as metas de produção vs. realizado do dia por setor para o Cockpit CEO e PPCP."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Serviço Supabase não inicializado.")
 
     try:
-        # Busca lançamentos de produção
         res = supabase.table("metas_producao") \
             .select("*") \
             .order("data", desc=True) \
@@ -272,11 +248,11 @@ def obter_relatorio_metas():
         registros = res.data or []
 
         consolidador = {
-            "ESTRUTURA": {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0, "fck_medio": 0},
-            "POSTE":     {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0, "fck_medio": 0},
-            "PAINEL":    {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0, "fck_medio": 0},
-            "LAJE":      {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0, "fck_medio": 0},
-            "OUTROS":    {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0, "fck_medio": 0}
+            "ESTRUTURA": {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0},
+            "POSTE":     {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0},
+            "PAINEL":    {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0},
+            "LAJE":      {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0},
+            "OUTROS":    {"volume_planejado_m3": 0.0, "volume_realizado_m3": 0.0, "qtd_pecas": 0}
         }
 
         for r in registros:
@@ -288,7 +264,6 @@ def obter_relatorio_metas():
             consolidador[setor]["volume_realizado_m3"] += float(r.get("volume_m3") or 0)
             consolidador[setor]["qtd_pecas"] += int(r.get("qtd_pecas") or 0)
 
-        # Calcula o percentual de atingimento da meta global e por setor
         resultado_final = {}
         for s, dados in consolidador.items():
             plan = dados["volume_planejado_m3"]
@@ -305,7 +280,7 @@ def obter_relatorio_metas():
         return {
             "sucesso": True,
             "desempenho_por_setor": resultado_final,
-            "historico_lancamentos": registros[:20]
+            "historico_lancamentos": registros[:30]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao consolidar metas: {str(e)}")
@@ -313,7 +288,6 @@ def obter_relatorio_metas():
 
 @app.get("/api/relatorios/consumo-setor")
 def obter_consumo_por_setor():
-    """Consolida os dados de dosagem de bateladas no CLP divididos por setor de fabricação."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Serviço Supabase não inicializado.")
 
@@ -343,12 +317,6 @@ def obter_consumo_por_setor():
             consolidador[setor]["cimento_kg"] += float(b.get("cimento_kg") or 0)
             consolidador[setor]["agua_l"] += float(b.get("agua_l") or 0)
             consolidador[setor]["aditivos_l"] += float(b.get("aditivo1_l") or 0) + float(b.get("aditivo2_l") or 0)
-            consolidador[setor]["agregados_kg"] += (
-                float(b.get("pedrisco_kg") or 0) +
-                float(b.get("seixo_medio_kg") or 0) +
-                float(b.get("seixo_fino_kg") or 0) +
-                float(b.get("areia_kg") or 0)
-            )
 
         return {
             "sucesso": True,
