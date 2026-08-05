@@ -4,20 +4,18 @@ from typing import Dict, Any, List
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from supabase import Client, create_client
 
-# Inicialização da Aplicação
+# Inicialização da Aplicação FastAPI
 app = FastAPI(
     title="Premazon - Central System",
     description="Sistema Integrado de Gestão de Estoques, PPCP e Automação Industrial",
     version="1.0.0"
 )
 
-# Configuração de CORS (Habilita requisições do Vercel e do ambiente local)
+# Configuração de CORS (Permite requisições da Vercel e do ambiente local)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,32 +24,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuração do Cliente Supabase
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://zzqfasalhaslyobwytdx.supabase.co")
-SUPABASE_KEY = os.getenv(
-    "SUPABASE_KEY",
+# Leitura Flexível de Variáveis de Ambiente (Suporta padrões Vercel/Next e Padrão Simples)
+SUPABASE_URL = (
+    os.getenv("NEXT_PUBLIC_SUPABASE_URL") or 
+    os.getenv("SUPABASE_URL") or 
+    "https://zzqfasalhaslyobwytdx.supabase.co"
+)
+
+SUPABASE_KEY = (
+    os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY") or 
+    os.getenv("SUPABASE_KEY") or 
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6cWZhc2FsaGFzbHlvYnd5dGR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NDA4MjcsImV4cCI6MjEwMDQxNjgyN30.27hi17FWQYvAbIOAuf_g1pBO-6br8kALoQTveIEzWdU"
 )
 
+# Inicialização Resiliente do Supabase (Evita crash fatal no boot Serverless)
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as err:
-    print(f"Alerta: Falha ao inicializar cliente Supabase: {err}")
+    print(f"Aviso: Falha ao inicializar o Supabase: {err}")
     supabase = None
 
-# Resolução do Caminho do index.html (Mapeia a pasta raiz do projeto)
+# Resolução Dinâmica de Diretórios para Vercel (Linux) e Local (Windows)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-
-# Se o index.html estiver na raiz, usa a raiz; caso contrário, verifica a pasta backend
-if os.path.exists(os.path.join(PROJECT_ROOT, "index.html")):
-    TEMPLATE_DIR = PROJECT_ROOT
-elif os.path.exists(os.path.join(CURRENT_DIR, "index.html")):
-    TEMPLATE_DIR = CURRENT_DIR
-else:
-    TEMPLATE_DIR = PROJECT_ROOT
-
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 
 # Modelos Pydantic para Requisições HTTP
@@ -75,14 +70,29 @@ REGS_ESCRITA = {
 
 @app.get("/", response_class=HTMLResponse)
 def renderizar_index(request: Request):
-    """Renderiza a página principal do Dashboard (index.html)."""
-    index_path = os.path.join(TEMPLATE_DIR, "index.html")
+    """Entrega o index.html lendo diretamente o arquivo na raiz do projeto."""
+    index_path = os.path.join(PROJECT_ROOT, "index.html")
+    
+    # Se não encontrar na raiz, tenta na pasta backend
     if not os.path.exists(index_path):
-        return HTMLResponse(
-            content=f"<h1>Erro de Localização de Arquivo</h1><p>Não foi possível encontrar o arquivo <b>index.html</b> em: <code>{index_path}</code></p>",
-            status_code=404
-        )
-    return templates.TemplateResponse("index.html", {"request": request})
+        index_path = os.path.join(CURRENT_DIR, "index.html")
+
+    if os.path.exists(index_path):
+        try:
+            with open(index_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return HTMLResponse(content=content, status_code=200)
+        except Exception as e:
+            return HTMLResponse(content=f"<h1>Erro ao ler arquivo</h1><p>{str(e)}</p>", status_code=500)
+
+    return HTMLResponse(
+        content=(
+            "<h2>API Premazon Central System Ativa na Nuvem</h2>"
+            f"<p>Arquivo index.html não localizado no caminho: <code>{index_path}</code></p>"
+            "<p>Acesse <a href='/docs'>/docs</a> para visualizar a documentação interativa da API.</p>"
+        ),
+        status_code=200
+    )
 
 
 @app.get("/api/estoque/centrais")
