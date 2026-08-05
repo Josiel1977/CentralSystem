@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premazon - Sistema de Gestão Industrial & CEO Cockpit</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { slate: { 850: '#0f172a', 900: '#0b0f19' } }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF & AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+
+    <!-- HEADER DE NAVEGAÇÃO -->
+    <header class="bg-slate-850 border-b border-slate-800 sticky top-0 z-50 backdrop-blur shadow-2xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-industry text-blue-500 text-2xl"></i>
+                <div>
+                    <h1 class="text-xl font-black text-white tracking-wide">PREMAZON INDUSTRIAL</h1>
+                    <p class="text-xs text-slate-400">Telemetria CLP Delta & Gestão Operacional</p>
+                </div>
+            </div>
+
+            <!-- SELETOR DE ABAS -->
+            <div class="flex bg-slate-900 p-1.5 rounded-xl border border-slate-700/80">
+                <button id="btnTabPPCP" onclick="mudarAba('ppcp')" class="px-5 py-2 text-xs font-bold rounded-lg transition text-white bg-blue-600 shadow-lg shadow-blue-600/30 flex items-center gap-2">
+                    <i class="fa-solid fa-gears"></i> Módulo PPCP / Abastecimento
+                </button>
+                <button id="btnTabCEO" onclick="mudarAba('ceo')" class="px-5 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i> Cockpit CEO / Diretoria
+                </button>
+            </div>
+
+            <!-- STATUS E PENDÊNCIAS -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 text-xs font-mono bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="statusConexao" class="text-emerald-400">CLP ONLINE</span>
+                </div>
+
+                <div id="containerPendencias" class="hidden flex items-center gap-2 text-xs font-mono bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg">
+                    <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i>
+                    <span><strong id="numPendentes">0</strong> Pendência(s)</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-8 py-8">
+
+        <!-- MÓDULO 1: OPERAÇÃO PPCP -->
+        <div id="abaPPCP" class="space-y-8">
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 border-l-4 border-l-amber-500 shadow-lg">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Silo Cimento (D240)</p>
+                    <h3 id="ppcp-cimento" class="text-3xl font-black text-amber-400 mt-2 font-mono">0 kg</h3>
+                    <span class="text-[11px] text-slate-400">Medição em tempo real do CLP</span>
+                </div>
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 border-l-4 border-l-emerald-500 shadow-lg">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Reservatório Aditivo 1 (D242)</p>
+                    <h3 id="ppcp-aditivo1" class="text-3xl font-black text-emerald-400 mt-2 font-mono">0 L</h3>
+                    <span class="text-[11px] text-slate-400">Medição em tempo real do CLP</span>
+                </div>
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 border-l-4 border-l-rose-500 shadow-lg">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Reservatório Aditivo 2 (D244)</p>
+                    <h3 id="ppcp-aditivo2" class="text-3xl font-black text-rose-400 mt-2 font-mono">0 L</h3>
+                    <span class="text-[11px] text-slate-400">Medição em tempo real do CLP</span>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-truck-ramp-box text-blue-400"></i> Lançar Entrada de Insumo
+                    </h3>
+                    <form onsubmit="enviarAbastecimento(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Central Alvo</label>
+                            <select id="inputCentral" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200">
+                                <option value="1">Central 01 (Estrutura)</option>
+                                <option value="2">Central 02 (Columbia)</option>
+                                <option value="3">Central 03 (Artefatos)</option>
+                                <option value="4">Central 04 (Lajes)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Insumo Material</label>
+                            <select id="inputInsumo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200">
+                                <option value="cimento">Cimento (Gravar D248)</option>
+                                <option value="aditivo1">Aditivo 1 (Gravar D252)</option>
+                                <option value="aditivo2">Aditivo 2 (Gravar D256)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1">Quantidade (kg/L)</label>
+                                <input type="number" id="inputQuantidade" value="5000" min="100" step="100" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1">Nº Nota Fiscal</label>
+                                <input type="text" id="inputNota" placeholder="NF-10254" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono uppercase">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Responsável pelo Recebimento</label>
+                            <input type="text" id="inputUsuario" value="Josiel Maia" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Confirmar e Enviar para CLP
+                        </button>
+                        <div id="alertaPPCP" class="hidden text-xs text-center p-2 rounded-lg font-semibold"></div>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-700 pb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-clipboard-list text-blue-400"></i> Auditoria de Entradas (PPCP)
+                            </h3>
+                            <p class="text-xs text-slate-400">Histórico de recepção de materiais por Nota Fiscal</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportarRelatorioPPCP_Excel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                                <i class="fa-solid fa-file-excel"></i> Excel PPCP
+                            </button>
+                            <button onclick="exportarRelatorioPPCP_PDF()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                                <i class="fa-solid fa-file-pdf"></i> PDF PPCP
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="border-b border-slate-700 text-xs text-slate-400 uppercase font-semibold">
+                                    <th class="py-2">Data/Hora</th>
+                                    <th class="py-2">NF</th>
+                                    <th class="py-2">Central</th>
+                                    <th class="py-2">Insumo</th>
+                                    <th class="py-2">Quantidade</th>
+                                    <th class="py-2">Responsável</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaPPCP" class="divide-y divide-slate-800/60 font-mono">
+                                <tr><td colspan="6" class="py-4 text-center text-slate-500">Buscando histórico de cargas...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- MÓDULO 2: VISÃO EXECUTIVA CEO -->
+        <div id="abaCEO" class="hidden space-y-8">
+            <section class="bg-gradient-to-r from-slate-800 via-indigo-950 to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-black text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Painel Executivo & Indicadores Estratégicos
+                    </h2>
+                    <p class="text-xs text-slate-300 mt-1">Consolidação de volume produzido, atingimento de meta e rateio por setor.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <select id="filtroPeriodo" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none">
+                        <option value="hoje">📅 Consolidado Hoje (Diário)</option>
+                        <option value="semana">📆 Últimos 7 Dias (Semanal)</option>
+                        <option value="mes" selected>🗓️ Mês Atual (Mensal)</option>
+                    </select>
+
+                    <button onclick="exportarExcelCEO()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-600/30">
+                        <i class="fa-solid fa-file-excel text-base"></i> Exportar Excel
+                    </button>
+
+                    <button onclick="exportarPDFCEO()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-rose-600/30">
+                        <i class="fa-solid fa-file-pdf text-base"></i> Exportar PDF
+                    </button>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-blue-500 shadow-md">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">M30 - ESTRUTURA</span>
+                    <h4 id="ceo-m30-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
+                    <p id="ceo-m30-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-cyan-500 shadow-md">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">M31 - POSTE</span>
+                    <h4 id="ceo-m31-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
+                    <p id="ceo-m31-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-indigo-500 shadow-md">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">M32 - PAINEL</span>
+                    <h4 id="ceo-m32-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
+                    <p id="ceo-m32-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-emerald-500 shadow-md">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">M33 - LAJE</span>
+                    <h4 id="ceo-m33-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
+                    <p id="ceo-m33-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+                </div>
+                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-purple-500 shadow-md">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">M34 - OUTROS</span>
+                    <h4 id="ceo-m34-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
+                    <p id="ceo-m34-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bullseye text-emerald-400"></i> Meta vs. Produção Real (m³)
+                    </h3>
+                    <div class="relative w-full h-72"><canvas id="chartMetaVsReal"></canvas></div>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-amber-400"></i> Rateio de Cimento por Setor (%)
+                    </h3>
+                    <div class="relative w-full h-72"><canvas id="chartSetores"></canvas></div>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-blue-400"></i> Volume Concretado (m³)
+                    </h3>
+                    <div class="relative w-full h-72"><canvas id="chartVolume"></canvas></div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- JS -->
+    <script>
+        let chartMetaInstancia = null;
+        let chartSetoresInstancia = null;
+        let chartVolumeInstancia = null;
+
+        let dadosSetoresGlobal = {};
+        let historicoPPCPGlobal = [];
+
+        const METAS_ESTIMADAS = { 'ESTRUTURA': 120, 'POSTE': 80, 'PAINEL': 90, 'LAJE': 100, 'OUTROS': 30 };
+
+        function mudarAba(aba) {
+            const elPPCP = document.getElementById('abaPPCP');
+            const elCEO = document.getElementById('abaCEO');
+            const btnPPCP = document.getElementById('btnTabPPCP');
+            const btnCEO = document.getElementById('btnTabCEO');
+
+            if (aba === 'ppcp') {
+                elPPCP.classList.remove('hidden');
+                elCEO.classList.add('hidden');
+                btnPPCP.className = "px-5 py-2 text-xs font-bold rounded-lg transition text-white bg-blue-600 shadow-lg shadow-blue-600/30 flex items-center gap-2";
+                btnCEO.className = "px-5 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white flex items-center gap-2";
+            } else {
+                elPPCP.classList.add('hidden');
+                elCEO.classList.remove('hidden');
+                btnCEO.className = "px-5 py-2 text-xs font-bold rounded-lg transition text-white bg-blue-600 shadow-lg shadow-blue-600/30 flex items-center gap-2";
+                btnPPCP.className = "px-5 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white flex items-center gap-2";
+                setTimeout(carregarDadosCEO, 100);
+            }
+        }
+
+        async function carregarDadosPPCP() {
+            try {
+                const res = await fetch('/api/estoque/centrais');
+                const data = await res.json();
+
+                if (data.sucesso) {
+                    const c1 = data.centrais['1'];
+                    if (c1) {
+                        document.getElementById('ppcp-cimento').innerText = c1.cimento_kg.toLocaleString('pt-BR') + ' kg';
+                        document.getElementById('ppcp-aditivo1').innerText = c1.aditivo1_l.toLocaleString('pt-BR') + ' L';
+                        document.getElementById('ppcp-aditivo2').innerText = c1.aditivo2_l.toLocaleString('pt-BR') + ' L';
+                    }
+
+                    // Atualiza Badge de Pendências
+                    const totalPendentes = data.total_pendentes || 0;
+                    const boxPendencias = document.getElementById('containerPendencias');
+                    const txtPendentes = document.getElementById('numPendentes');
+                    if (totalPendentes > 0) {
+                        boxPendencias.classList.remove('hidden');
+                        txtPendentes.innerText = totalPendentes;
+                    } else {
+                        boxPendencias.classList.add('hidden');
+                    }
+
+                    historicoPPCPGlobal = data.historico || [];
+                    const tbody = document.getElementById('tabelaPPCP');
+
+                    if (historicoPPCPGlobal.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = historicoPPCPGlobal.map(h => {
+                        const d = new Date(h.data_hora || h.created_at || new Date());
+                        return `
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="py-2.5 text-blue-400 font-bold">${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR')}</td>
+                                <td class="py-2.5 text-amber-400 font-bold">${h.numero_nota || 'N/A'}</td>
+                                <td class="py-2.5">Central 0${h.central_id}</td>
+                                <td class="py-2.5 capitalize text-cyan-300">${(h.insumo || '').replace('_', ' ')}</td>
+                                <td class="py-2.5 text-emerald-400 font-bold">${Number(h.quantidade || 0).toLocaleString('pt-BR')}</td>
+                                <td class="py-2.5 text-slate-400">${h.usuario || 'PPCP'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch (e) {
+                console.error("Erro PPCP:", e);
+            }
+        }
+
+        async function enviarAbastecimento(e) {
+            e.preventDefault();
+            const alerta = document.getElementById('alertaPPCP');
+            alerta.className = "text-xs text-center p-2 rounded-lg font-semibold bg-blue-500/20 text-blue-300 block";
+            alerta.innerText = "Enviando comando para o CLP Delta...";
+
+            const payload = {
+                central_id: parseInt(document.getElementById('inputCentral').value),
+                insumo: document.getElementById('inputInsumo').value,
+                quantidade: parseInt(document.getElementById('inputQuantidade').value),
+                numero_nota: document.getElementById('inputNota').value,
+                usuario: document.getElementById('inputUsuario').value
+            };
+
+            try {
+                const res = await fetch('/api/abastecimento/enviar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.sucesso) {
+                    alerta.className = "text-xs text-center p-2 rounded-lg font-semibold bg-emerald-500/20 text-emerald-400 block";
+                    alerta.innerText = "✅ " + data.mensagem;
+                    document.getElementById('inputNota').value = '';
+                    setTimeout(carregarDadosPPCP, 1000);
+                }
+            } catch (err) {
+                alerta.className = "text-xs text-center p-2 rounded-lg font-semibold bg-rose-500/20 text-rose-400 block";
+                alerta.innerText = "❌ Falha de comunicação com a API.";
+            }
+        }
+
+        async function carregarDadosCEO() {
+            try {
+                const res = await fetch('/api/relatorios/consumo-setor');
+                const data = await res.json();
+
+                if (data.sucesso) {
+                    dadosSetoresGlobal = data.consumo_por_setor || {};
+
+                    const setores = ['ESTRUTURA', 'POSTE', 'PAINEL', 'LAJE', 'OUTROS'];
+                    const mapaIds = { 'ESTRUTURA': 'm30', 'POSTE': 'm31', 'PAINEL': 'm32', 'LAJE': 'm33', 'OUTROS': 'm34' };
+
+                    setores.forEach(s => {
+                        const id = mapaIds[s];
+                        const info = dadosSetoresGlobal[s] || { volume_m3: 0, cimento_kg: 0 };
+                        document.getElementById(`ceo-${id}-vol`).innerText = info.volume_m3.toFixed(1) + ' m³';
+                        document.getElementById(`ceo-${id}-cim`).innerText = info.cimento_kg.toLocaleString('pt-BR') + ' kg cimento';
+                    });
+
+                    renderizarGraficosCEO(dadosSetoresGlobal);
+                }
+            } catch (e) {
+                console.error("Erro CEO:", e);
+            }
+        }
+
+        function renderizarGraficosCEO(dados) {
+            const labels = Object.keys(dados);
+            const valCimento = labels.map(k => dados[k].cimento_kg);
+            const valVolume = labels.map(k => dados[k].volume_m3);
+            const valMetas = labels.map(k => METAS_ESTIMADAS[k] || 50);
+
+            const ctxMeta = document.getElementById('chartMetaVsReal').getContext('2d');
+            if (chartMetaInstancia) chartMetaInstancia.destroy();
+            chartMetaInstancia = new Chart(ctxMeta, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Meta (m³)', data: valMetas, backgroundColor: 'rgba(148, 163, 184, 0.3)', borderRadius: 6 },
+                        { label: 'Realizado (m³)', data: valVolume, backgroundColor: '#10b981', borderRadius: 6 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } } } }
+            });
+
+            const ctxSetores = document.getElementById('chartSetores').getContext('2d');
+            if (chartSetoresInstancia) chartSetoresInstancia.destroy();
+            chartSetoresInstancia = new Chart(ctxSetores, {
+                type: 'doughnut',
+                data: { labels: labels, datasets: [{ data: valCimento.some(v => v > 0) ? valCimento : [1, 1, 1, 1, 1], backgroundColor: ['#3b82f6', '#06b6d4', '#6366f1', '#10b981', '#a855f7'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } }
+            });
+
+            const ctxVolume = document.getElementById('chartVolume').getContext('2d');
+            if (chartVolumeInstancia) chartVolumeInstancia.destroy();
+            chartVolumeInstancia = new Chart(ctxVolume, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Volume (m³)', data: valVolume, backgroundColor: '#38bdf8', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } } } }
+            });
+        }
+
+        function exportarRelatorioPPCP_Excel() {
+            const wb = XLSX.utils.book_new();
+            const dados = [
+                ["RELATÓRIO DE ABASTECIMENTO DE INSUMOS - PPCP PREMAZON"],
+                ["Gerado em:", new Date().toLocaleString('pt-BR')],
+                [],
+                ["Data/Hora", "Nº Nota Fiscal", "Central", "Insumo", "Quantidade (kg/L)", "Responsável"]
+            ];
+            historicoPPCPGlobal.forEach(h => {
+                const d = new Date(h.data_hora || h.created_at || new Date());
+                dados.push([`${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR')}`, h.numero_nota || 'N/A', `Central 0${h.central_id}`, (h.insumo || '').toUpperCase(), h.quantidade, h.usuario || 'PPCP']);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(dados);
+            XLSX.utils.book_append_sheet(wb, ws, "Abastecimentos_PPCP");
+            XLSX.writeFile(wb, `PPCP_Abastecimentos_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportarRelatorioPPCP_PDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFillColor(15, 23, 42);
+            doc.rect(0, 0, 210, 28, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14);
+            doc.text("PREMAZON - RELATÓRIO DE ENTRADAS PPCP", 14, 18);
+            const colunas = ["Data/Hora", "NF", "Central", "Insumo", "Qtd (kg/L)", "Responsável"];
+            const linhas = historicoPPCPGlobal.map(h => {
+                const d = new Date(h.data_hora || h.created_at || new Date());
+                return [`${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR')}`, h.numero_nota || 'N/A', `Central 0${h.central_id}`, (h.insumo || '').toUpperCase(), Number(h.quantidade || 0).toLocaleString('pt-BR'), h.usuario || 'PPCP'];
+            });
+            doc.autoTable({ startY: 32, head: [colunas], body: linhas, theme: 'striped', headStyles: { fillStyle: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' } });
+            doc.save(`PPCP_Abastecimentos_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+
+        function exportarExcelCEO() {
+            const wb = XLSX.utils.book_new();
+            const dadosPlanilha = [
+                ["RELATÓRIO EXECUTIVO PREMAZON - CONSUMO POR SETOR"],
+                ["Data Emissão:", new Date().toLocaleDateString('pt-BR')],
+                [],
+                ["Setor", "Bateladas", "Volume (m³)", "Cimento (kg)", "Água (L)", "Aditivos (L)", "Agregados (kg)"]
+            ];
+            Object.keys(dadosSetoresGlobal).forEach(setor => {
+                const s = dadosSetoresGlobal[setor];
+                dadosPlanilha.push([setor, s.total_bateladas, s.volume_m3, s.cimento_kg, s.agua_l, s.aditivos_l, s.agregados_kg]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(dadosPlanilha);
+            XLSX.utils.book_append_sheet(wb, ws, "Consolidado_Setores");
+            XLSX.writeFile(wb, `Premazon_Relatorio_CEO_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportarPDFCEO() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFillColor(15, 23, 42);
+            doc.rect(0, 0, 210, 30, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.text("PREMAZON INDUSTRIAL - RELATÓRIO EXECUTIVO", 14, 18);
+            const colunas = ["Setor", "Bateladas", "Volume (m³)", "Cimento (kg)", "Água (L)", "Aditivos (L)"];
+            const linhas = Object.keys(dadosSetoresGlobal).map(k => {
+                const s = dadosSetoresGlobal[k];
+                return [k, s.total_bateladas, s.volume_m3.toFixed(2), s.cimento_kg.toLocaleString('pt-BR'), s.agua_l.toLocaleString('pt-BR'), s.aditivos_l.toLocaleString('pt-BR')];
+            });
+            doc.autoTable({ startY: 35, head: [colunas], body: linhas, theme: 'grid' });
+            doc.save(`Premazon_Relatorio_CEO_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarDadosPPCP();
+            setInterval(carregarDadosPPCP, 3000);
+        });
+    </script>
+</body>
+</html>

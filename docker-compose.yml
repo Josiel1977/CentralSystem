@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Serviço 1: Coletor Modbus (Roda em background e não para nunca)
+  plc_collector:
+    build: .
+    container_name: central_plc_collector
+    restart: always
+    env_file:
+      - .env.production
+    command: python -m collectors.plc_worker
+    network_mode: "host" # Importante para alcançar a subrede local dos CLPs (192.168.1.X)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Serviço 2: API Backend + Dashboard Dash
+  web_dashboard:
+    build: .
+    container_name: central_web_dashboard
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.production
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 2
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
