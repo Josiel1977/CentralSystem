@@ -11,7 +11,7 @@ class DeltaPLCModbusDriver:
         host: str = "192.168.1.5",
         port: int = 502,
         unit_id: int = 1,
-        timeout: float = 1.0,
+        timeout: float = 2.0,
     ):
         self.host = host
         self.port = port
@@ -20,7 +20,7 @@ class DeltaPLCModbusDriver:
         self.client = None
 
     def conectar(self) -> bool:
-        """Abre a conexão Modbus TCP com o CLP Delta."""
+        """Abre a conexão Modbus TCP persistente com o CLP Delta."""
         try:
             if self.client and self.client.is_socket_open():
                 return True
@@ -30,27 +30,39 @@ class DeltaPLCModbusDriver:
             return self.client.connect()
         except Exception as e:
             logger.error(
-                f"Erro ao conectar com CLP Delta em {self.host}:{self.port} ->"
-                f" {e}"
+                f"Erro ao conectar com CLP Delta em {self.host}:{self.port} -> {e}"
             )
             return False
 
     def desconectar(self):
-        """Fecha o socket TCP para não travar a porta 502 do CLP."""
-        if self.client and self.client.is_socket_open():
-            self.client.close()
+        """Fecha o socket TCP para liberar a porta 502 no CLP."""
+        if self.client:
+            try:
+                self.client.close()
+            except Exception:
+                pass
+        self.client = None
+
+    @property
+    def conectado(self) -> bool:
+        return self.client is not None and self.client.is_socket_open()
 
     def ler_32bits_dint(self, d_address: int) -> int:
-        """Lê 32 bits (DINT) do CLP Delta reconstruindo Word Alta e Baixa."""
+        """Lê valor de 32 bits (DINT) combinando D e D+1."""
         if not self.conectar():
             return 0
         try:
             try:
                 res = self.client.read_holding_registers(
-                    d_address, count=2, slave=self.unit_id
+                    d_address, count=2, device_id=self.unit_id
                 )
             except TypeError:
-                res = self.client.read_holding_registers(d_address, count=2)
+                try:
+                    res = self.client.read_holding_registers(
+                        d_address, count=2, slave=self.unit_id
+                    )
+                except TypeError:
+                    res = self.client.read_holding_registers(d_address, count=2)
 
             if (
                 res
@@ -72,7 +84,7 @@ class DeltaPLCModbusDriver:
         return 0
 
     def escrever_32bits_dint(self, d_address: int, valor: int) -> bool:
-        """Escreve um valor de 32 bits (DINT) nos registradores do CLP Delta (ex: D248)."""
+        """Escreve um valor de 32 bits (DINT) nos registradores do CLP Delta (ex: D248, D252, D256)."""
         if not self.conectar():
             return False
         try:
@@ -83,10 +95,15 @@ class DeltaPLCModbusDriver:
 
             try:
                 res = self.client.write_registers(
-                    d_address, values=payload, slave=self.unit_id
+                    d_address, values=payload, device_id=self.unit_id
                 )
             except TypeError:
-                res = self.client.write_registers(d_address, values=payload)
+                try:
+                    res = self.client.write_registers(
+                        d_address, values=payload, slave=self.unit_id
+                    )
+                except TypeError:
+                    res = self.client.write_registers(d_address, values=payload)
 
             return bool(res and not res.isError())
         except Exception as e:
@@ -96,32 +113,24 @@ class DeltaPLCModbusDriver:
         return False
 
     def ler_bit_m(self, m_address: int) -> bool:
-        """Lê um bit de memória M no CLP Delta (Ex: M110 -> Flag Batelada, M30 -> Setor Estrutura)."""
+        """Lê o estado de uma memória M no CLP Delta (Offset 2048)."""
         if not self.conectar():
             return False
+
+        endereco_modbus = 2048 + m_address
+
         try:
-            address_offset = 1536 + m_address
             try:
                 res = self.client.read_coils(
-                    address_offset, count=1, slave=self.unit_id
+                    endereco_modbus, count=1, device_id=self.unit_id
                 )
             except TypeError:
-                res = self.client.read_coils(address_offset, count=1)
-
-            if (
-                res
-                and not res.isError()
-                and hasattr(res, "bits")
-                and len(res.bits) > 0
-            ):
-                return bool(res.bits[0])
-
-            try:
-                res = self.client.read_coils(
-                    m_address, count=1, slave=self.unit_id
-                )
-            except TypeError:
-                res = self.client.read_coils(m_address, count=1)
+                try:
+                    res = self.client.read_coils(
+                        endereco_modbus, count=1, slave=self.unit_id
+                    )
+                except TypeError:
+                    res = self.client.read_coils(endereco_modbus, count=1)
 
             if (
                 res
@@ -134,3 +143,28 @@ class DeltaPLCModbusDriver:
         except Exception as e:
             logger.error(f"Erro ao ler Bit M{m_address}: {e}")
         return False
+
+    def escrever_bit_m(self, m_address: int, valor: bool) -> bool:
+        """Escreve/Resetar o estado de uma memória M no CLP Delta (Ex: RST M110)."""
+        if not self.conectar():
+            return False
+
+        endereco_modbus = 2048 + m_address
+
+        try:
+            try:
+                res = self.client.write_coil(
+                    endereco_modbus, value=bool(valor), device_id=self.unit_id
+                )
+            except TypeError:
+                try:
+                    res = self.client.write_coil(
+                        endereco_modbus, value=bool(valor), slave=self.unit_id
+                    )
+                except TypeError:
+                    res = self.client.write_coil(endereco_modbus, value=bool(valor))
+
+            return bool(res and not res.isError())
+        except Exception as e:
+            logger.error(f"Erro ao escrever Bit M{m_address}: {e}")
+            return False

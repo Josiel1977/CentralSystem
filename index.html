@@ -5,13 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREMAZON INDUSTRIAL - Telemetria CLP Delta & Gestão Operacional</title>
     
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
@@ -39,7 +35,6 @@
                 </div>
             </div>
 
-            <!-- STATUS DE CONEXÃO -->
             <div class="flex items-center space-x-4">
                 <div class="flex items-center space-x-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700">
                     <span class="relative flex h-2.5 w-2.5">
@@ -54,7 +49,6 @@
             </div>
         </div>
 
-        <!-- NAVEGAÇÃO POR ABAS -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex border-t border-slate-700/60">
             <button onclick="trocarAba('ceo')" id="tab-ceo" class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-blue-500 text-blue-400 transition">
                 <i class="fa-solid fa-chart-line text-xs"></i> Cockpit CEO / Diretoria
@@ -155,74 +149,90 @@
                 </div>
             </section>
 
-            <!-- CARDS DE SETORES INDUSTRIAIS M30 - M34 -->
-            <section class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-blue-500 shadow-md">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">M30 - ESTRUTURA</span>
-                    <h4 id="ceo-m30-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
-                    <p id="ceo-m30-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+            <!-- CARDS DE SETORES M30 - M34 -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div id="card-sector-m30" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-blue-500 shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M30 - ESTRUTURA</span>
+                        <span id="badge-m30" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
+                    </div>
+                    <h4 id="ceo-m30-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
+                    <p id="ceo-m30-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
                 </div>
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-cyan-500 shadow-md">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">M31 - POSTE</span>
-                    <h4 id="ceo-m31-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
-                    <p id="ceo-m31-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+
+                <div id="card-sector-m31" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-cyan-500 shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M31 - POSTE</span>
+                        <span id="badge-m31" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
+                    </div>
+                    <h4 id="ceo-m31-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
+                    <p id="ceo-m31-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
                 </div>
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-indigo-500 shadow-md">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">M32 - PAINEL</span>
-                    <h4 id="ceo-m32-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
-                    <p id="ceo-m32-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+
+                <div id="card-sector-m32" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-indigo-500 shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M32 - PAINEL</span>
+                        <span id="badge-m32" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
+                    </div>
+                    <h4 id="ceo-m32-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
+                    <p id="ceo-m32-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
                 </div>
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-emerald-500 shadow-md">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">M33 - LAJE</span>
-                    <h4 id="ceo-m33-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
-                    <p id="ceo-m33-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+
+                <div id="card-sector-m33" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-emerald-500 shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M33 - LAJE</span>
+                        <span id="badge-m33" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
+                    </div>
+                    <h4 id="ceo-m33-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
+                    <p id="ceo-m33-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
                 </div>
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-purple-500 shadow-md">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">M34 - OUTROS</span>
-                    <h4 id="ceo-m34-vol" class="text-xl font-bold text-white mt-1">0.0 m³</h4>
-                    <p id="ceo-m34-cim" class="text-xs text-amber-400 font-mono mt-1">0 kg cimento</p>
+
+                <div id="card-sector-m34" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-purple-500 shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M34 - OUTROS</span>
+                        <span id="badge-m34" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
+                    </div>
+                    <h4 id="ceo-m34-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
+                    <p id="ceo-m34-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
                 </div>
             </section>
 
-            <!-- OS 3 GRÁFICOS DO PAINEL DO CEO -->
+            <!-- OS 3 GRÁFICOS DO COCKPIT CEO -->
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
                         <i class="fa-solid fa-bullseye text-emerald-400"></i> Meta vs. Produção Real (m³)
                     </h3>
-                    <div class="relative w-full h-72"><canvas id="chartMetaVsReal"></canvas></div>
+                    <div class="relative w-full h-64"><canvas id="chartMetaVsReal"></canvas></div>
                 </div>
 
-                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
                         <i class="fa-solid fa-chart-pie text-amber-400"></i> Rateio de Cimento por Setor (%)
                     </h3>
-                    <div class="relative w-full h-72"><canvas id="chartSetores"></canvas></div>
+                    <div class="relative w-full h-64"><canvas id="chartSetores"></canvas></div>
                 </div>
 
-                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
                         <i class="fa-solid fa-chart-column text-blue-400"></i> Volume Concretado (m³)
                     </h3>
-                    <div class="relative w-full h-72"><canvas id="chartVolume"></canvas></div>
+                    <div class="relative w-full h-64"><canvas id="chartVolume"></canvas></div>
                 </div>
             </section>
         </div>
 
         <!-- ==================== MÓDULO 2: PPCP & ABASTECIMENTO ==================== -->
         <div id="conteudo-ppcp" class="space-y-6 hidden">
-            <!-- STATUS DAS CENTRAIS -->
             <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5">
                 <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
                     <i data-lucide="activity" class="w-5 h-5 text-blue-400"></i> Status das Centrais de Dosagem em Tempo Real
                 </h2>
                 <div id="grid-centrais" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- Preenchido via JS -->
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- FORMULÁRIO DE NOTAS -->
                 <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 space-y-4">
                     <div class="border-b border-slate-700 pb-3">
                         <h2 class="text-base font-semibold text-white flex items-center gap-2">
@@ -273,7 +283,6 @@
                     </form>
                 </div>
 
-                <!-- HISTÓRICO DE NOTAS COM BOTOES DE EXPORTAÇÃO -->
                 <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 lg:col-span-2 space-y-4">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h2 class="text-base font-semibold text-white flex items-center gap-2">
@@ -302,7 +311,6 @@
                                 </tr>
                             </thead>
                             <tbody id="tabela-historico" class="divide-y divide-slate-700/50">
-                                <!-- Preenchido via JS -->
                             </tbody>
                         </table>
                     </div>
@@ -314,7 +322,6 @@
         <div id="conteudo-producao" class="space-y-6 hidden">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                <!-- FORMULÁRIO PLANIX -->
                 <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 space-y-4">
                     <div class="border-b border-slate-700 pb-3">
                         <h2 class="text-base font-semibold text-white flex items-center gap-2">
@@ -372,7 +379,6 @@
                     </form>
                 </div>
 
-                <!-- PAINEL DE METAS COM BOTOES DE EXPORTACAO -->
                 <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 lg:col-span-2 space-y-4">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h2 class="text-base font-semibold text-white flex items-center gap-2">
@@ -389,7 +395,6 @@
                     </div>
 
                     <div id="painel-metas-producao" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Preenchido via JS -->
                     </div>
                 </div>
 
@@ -398,7 +403,6 @@
 
     </main>
 
-    <!-- JAVASCRIPT DE NAVEGAÇÃO E INTEGRACAO -->
     <script>
         const API_URL = window.location.origin;
         let chartMetaVsRealInstance = null;
@@ -425,11 +429,32 @@
         async function carregarDadosGerais() {
             try {
                 const res = await fetch(`${API_URL}/api/estoque/centrais`);
+                if (!res.ok) throw new Error("Aguardando resposta do servidor");
+
                 const data = await res.json();
 
                 if (data.sucesso) {
                     atualizarCardsGlobais(data.totais_globais, data.total_pendentes);
                     atualizarGridCentrais(data.centrais);
+                    
+                    const central1 = data.centrais[1];
+                    const setorAtivo = central1 ? (central1.setor_ativo || "IDLE") : "IDLE";
+                    const isOnline = central1 ? (central1.status === "ONLINE") : false;
+
+                    const statusTxt = document.getElementById("status-texto");
+                    const statusDot = document.getElementById("status-dot");
+
+                    if (isOnline) {
+                        statusTxt.textContent = `CLP ONLINE (${setorAtivo})`;
+                        statusTxt.className = "text-xs font-bold text-emerald-400 tracking-wider";
+                        statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
+                    } else {
+                        statusTxt.textContent = "CLP OFFLINE";
+                        statusTxt.className = "text-xs font-bold text-rose-400 tracking-wider";
+                        statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500";
+                    }
+
+                    destacarSetorAtivo(setorAtivo);
                     historicoNotasGlobal = data.historico || [];
                     atualizarTabelaHistorico(historicoNotasGlobal);
                 }
@@ -438,22 +463,77 @@
                 carregarRelatorioMetas();
 
             } catch (err) {
-                console.error("Erro na API:", err);
-                document.getElementById("status-texto").textContent = "ERRO DE CONEXÃO";
-                document.getElementById("status-texto").className = "text-xs font-bold text-rose-400";
-                document.getElementById("status-dot").className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500";
+                console.error("Aviso na conexão:", err);
+                const statusTxt = document.getElementById("status-texto");
+                const statusDot = document.getElementById("status-dot");
+                if (statusTxt) {
+                    statusTxt.textContent = "RECONECTANDO...";
+                    statusTxt.className = "text-xs font-bold text-amber-400 tracking-wider";
+                }
+                if (statusDot) {
+                    statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
+                }
             }
         }
 
+        function destacarSetorAtivo(setorNome) {
+            const mapaBadges = {
+                "ESTRUTURA": "badge-m30",
+                "POSTE":     "badge-m31",
+                "PAINEL":    "badge-m32",
+                "LAJE":      "badge-m33",
+                "OUTROS":    "badge-m34"
+            };
+
+            const mapaCards = {
+                "ESTRUTURA": "card-sector-m30",
+                "POSTE":     "card-sector-m31",
+                "PAINEL":    "card-sector-m32",
+                "LAJE":      "card-sector-m33",
+                "OUTROS":    "card-sector-m34"
+            };
+
+            Object.keys(mapaBadges).forEach(s => {
+                const badge = document.getElementById(mapaBadges[s]);
+                const card = document.getElementById(mapaCards[s]);
+                const isCurrent = setorNome.toUpperCase().includes(s);
+
+                if (badge) {
+                    if (isCurrent) {
+                        badge.classList.remove("hidden");
+                    } else {
+                        badge.classList.add("hidden");
+                    }
+                }
+
+                if (card) {
+                    if (isCurrent) {
+                        card.classList.add("ring-2", "ring-emerald-400", "bg-slate-800/90");
+                    } else {
+                        card.classList.remove("ring-2", "ring-emerald-400", "bg-slate-800/90");
+                    }
+                }
+            });
+        }
+
         function atualizarCardsGlobais(totais, pendentes) {
-            document.getElementById("card-cimento").textContent = `${(totais.total_cimento_kg || 0).toLocaleString('pt-BR')} kg`;
-            document.getElementById("card-aditivo1").textContent = `${(totais.total_aditivo1_l || 0).toLocaleString('pt-BR')} L`;
-            document.getElementById("card-aditivo2").textContent = `${(totais.total_aditivo2_l || 0).toLocaleString('pt-BR')} L`;
+            if (!totais) return;
+            // Preserva o último valor de estoque lido se o novo vier zerado por instabilidade
+            if (totais.total_cimento_kg > 0) {
+                document.getElementById("card-cimento").textContent = `${totais.total_cimento_kg.toLocaleString('pt-BR')} kg`;
+            }
+            if (totais.total_aditivo1_l > 0) {
+                document.getElementById("card-aditivo1").textContent = `${totais.total_aditivo1_l.toLocaleString('pt-BR')} L`;
+            }
+            if (totais.total_aditivo2_l > 0) {
+                document.getElementById("card-aditivo2").textContent = `${totais.total_aditivo2_l.toLocaleString('pt-BR')} L`;
+            }
             document.getElementById("card-pendentes").textContent = pendentes || 0;
         }
 
         function atualizarGridCentrais(centrais) {
             const container = document.getElementById("grid-centrais");
+            if (!centrais) return;
             container.innerHTML = "";
 
             Object.keys(centrais).forEach(id => {
@@ -469,6 +549,14 @@
                             </span>
                         </div>
                         <div class="space-y-1 text-xs">
+                            <div class="flex justify-between text-slate-400">
+                                <span>Setor Ativo:</span>
+                                <span class="font-bold text-emerald-400">${c.setor_ativo || 'IDLE'}</span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>Status CLP [M36]:</span>
+                                <span class="font-bold ${c.clp_on ? 'text-emerald-400' : 'text-slate-400'}">${c.clp_on ? 'LIGADO (ON)' : 'DESLIGADO'}</span>
+                            </div>
                             <div class="flex justify-between text-slate-400">
                                 <span>Cimento:</span>
                                 <span class="font-bold text-slate-200">${(c.cimento_kg || 0).toLocaleString()} kg</span>
@@ -493,18 +581,30 @@
                 const res = await fetch(`${API_URL}/api/relatorios/consumo-setor`);
                 const data = await res.json();
 
-                if (data.sucesso) {
+                if (data.sucesso && data.consumo_por_setor) {
                     const c = data.consumo_por_setor;
 
-                    atualizarCardM("ceo-m30", c.ESTRUTURA);
-                    atualizarCardM("ceo-m31", c.POSTE);
-                    atualizarCardM("ceo-m32", c.PAINEL);
-                    atualizarCardM("ceo-m33", c.LAJE);
-                    atualizarCardM("ceo-m34", c.OUTROS);
+                    atualizarCardM("ceo-m30", c.ESTRUTURA || { volume_m3: 0, cimento_kg: 0 });
+                    atualizarCardM("ceo-m31", c.POSTE || { volume_m3: 0, cimento_kg: 0 });
+                    atualizarCardM("ceo-m32", c.PAINEL || { volume_m3: 0, cimento_kg: 0 });
+                    atualizarCardM("ceo-m33", c.LAJE || { volume_m3: 0, cimento_kg: 0 });
+                    atualizarCardM("ceo-m34", c.OUTROS || { volume_m3: 0, cimento_kg: 0 });
 
                     const setores = ["M30 Estrutura", "M31 Poste", "M32 Painel", "M33 Laje", "M34 Outros"];
-                    const cimentos = [c.ESTRUTURA.cimento_kg, c.POSTE.cimento_kg, c.PAINEL.cimento_kg, c.LAJE.cimento_kg, c.OUTROS.cimento_kg];
-                    const volumes = [c.ESTRUTURA.volume_m3, c.POSTE.volume_m3, c.PAINEL.volume_m3, c.LAJE.volume_m3, c.OUTROS.volume_m3];
+                    const cimentos = [
+                        c.ESTRUTURA?.cimento_kg || 0,
+                        c.POSTE?.cimento_kg || 0,
+                        c.PAINEL?.cimento_kg || 0,
+                        c.LAJE?.cimento_kg || 0,
+                        c.OUTROS?.cimento_kg || 0
+                    ];
+                    const volumes = [
+                        c.ESTRUTURA?.volume_m3 || 0,
+                        c.POSTE?.volume_m3 || 0,
+                        c.PAINEL?.volume_m3 || 0,
+                        c.LAJE?.volume_m3 || 0,
+                        c.OUTROS?.volume_m3 || 0
+                    ];
 
                     renderizarGraficoSetores(setores, cimentos);
                     renderizarGraficoVolume(setores, volumes);
@@ -516,8 +616,14 @@
 
         function atualizarCardM(idPrefix, dados) {
             if (!dados) return;
-            document.getElementById(`${idPrefix}-vol`).textContent = `${dados.volume_m3.toFixed(1)} m³`;
-            document.getElementById(`${idPrefix}-cim`).textContent = `${dados.cimento_kg.toLocaleString('pt-BR')} kg cimento`;
+            const vol = (dados.volume_m3 || 0).toFixed(1);
+            const cim = (dados.cimento_kg || 0).toLocaleString('pt-BR');
+            
+            const elVol = document.getElementById(`${idPrefix}-vol`);
+            const elCim = document.getElementById(`${idPrefix}-cim`);
+
+            if (elVol) elVol.textContent = `${vol} m³`;
+            if (elCim) elCim.textContent = `${cim} kg cimento`;
         }
 
         async function carregarRelatorioMetas() {
@@ -736,7 +842,6 @@
             });
         }
 
-        // EXPORTAÇÕES EXCEL E PDF PARA TODOS OS MÓDULOS
         function exportarNotasCSV() {
             if (!historicoNotasGlobal.length) return alert("Sem dados de notas para exportar.");
             let csv = "Data/Hora,Central,Nota Fiscal,Insumo,Quantidade,Responsavel\n";

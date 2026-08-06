@@ -1,7 +1,7 @@
 import sqlite3
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger("LocalDB")
 DB_FILE = "local_cache.db"
@@ -20,6 +20,7 @@ def init_local_db():
             )
         """)
         conn.commit()
+        logger.info("Banco de dados SQLite local (local_cache.db) inicializado.")
 
 def salvar_registro_offline(tabela: str, dados: dict):
     """Salva o lançamento/batelada no banco SQLite local para envio posterior à Nuvem"""
@@ -27,10 +28,10 @@ def salvar_registro_offline(tabela: str, dados: dict):
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO sync_queue (tabela, payload, criado_em) VALUES (?, ?, ?)",
-            (tabela, json.dumps(dados), datetime.now().isoformat())
+            (tabela, json.dumps(dados), datetime.now(timezone.utc).isoformat())
         )
         conn.commit()
-        logger.info(f"💾 Registro salvo no cache local SQLite (Aguardando sincronização com a Nuvem).")
+        logger.info("💾 Registro salvo no cache local SQLite (Aguardando sincronização com a Nuvem).")
 
 def obter_registros_pendentes(limit=20):
     with sqlite3.connect(DB_FILE) as conn:
