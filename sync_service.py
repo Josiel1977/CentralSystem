@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(f"PremazonSyncCentral{CENTRAL_ID}")
 
-# Inicializa a estrutura de banco de dados SQLite local
+# Inicializa o banco SQLite local para contingência offline
 init_local_db()
 
 try:
@@ -41,6 +41,71 @@ MAPA_SETORES = {
     "OUTROS": {"flag_bit": 34, "base_reg": 136},
 }
 
+
+# ==============================================================================
+# FUNÇÕES ROBUSTAS DE LEITURA E ESCRITA MODBUS COM OFFSET E WORD-SWAP DELTA DVP
+# ==============================================================================
+
+def ler_dint_delta(plc: DeltaPLCModbusDriver, reg_d: int) -> int:
+    """
+    Lê valor DINT (32-bit) dos registradores D do CLP Delta com offset +4096
+    e faz a reconstrução correta dos registradores em Word-Swap.
+    Compatível com pymodbus v3.x (utiliza unit=1 ou slave dependendo do método).
+    """
+    try:
+        if hasattr(plc, "client") and plc.client and plc.client.is_socket_open():
+            modbus_addr = reg_d + 4096  
+            
+            # Tenta com unit=1 (PyModbus 3.x+), se falhar tenta sem argumento explícito
+            try:
+                rr = plc.client.read_holding_registers(modbus_addr, count=2, unit=1)
+            except TypeError:
+                rr = plc.client.read_holding_registers(modbus_addr, count=2)
+            
+            if not rr.isError() and hasattr(rr, "registers") and len(rr.registers) == 2:
+                low_word = rr.registers[0]   # D240
+                high_word = rr.registers[1]  # D241
+                
+                val = (high_word << 16) | low_word
+                if val & 0x80000000:
+                    val -= 0x100000000
+                return val
+        
+        # Fallback para o driver base se disponível
+        if hasattr(plc, "ler_32bits_dint"):
+            return plc.ler_32bits_dint(reg_d)
+            
+        return 0
+    except Exception as e:
+        logger.error(f"Erro ao ler registrador D{reg_d}: {e}")
+        return 0
+
+
+def escrever_dint_delta(plc: DeltaPLCModbusDriver, reg_d: int, valor: int) -> bool:
+    """
+    Escreve um valor DINT (32-bit) nos registradores D com offset +4096.
+    """
+    try:
+        if hasattr(plc, "client") and plc.client and plc.client.is_socket_open():
+            modbus_addr = reg_d + 4096
+            val = int(valor) & 0xFFFFFFFF
+            low_word = val & 0xFFFF
+            high_word = (val >> 16) & 0xFFFF
+            
+            try:
+                rq = plc.client.write_registers(modbus_addr, [low_word, high_word], unit=1)
+            except TypeError:
+                rq = plc.client.write_registers(modbus_addr, [low_word, high_word])
+                
+            return not rq.isError()
+        
+        if hasattr(plc, "escrever_32bits_dint"):
+            return plc.escrever_32bits_dint(reg_d, valor)
+            
+        return False
+    except Exception as e:
+        logger.error(f"Erro ao escrever D{reg_d}: {e}")
+        return False
 
 def obter_setor_ativo_atual(plc: DeltaPLCModbusDriver) -> str:
     """Retorna qual setor M30-M34 está selecionado no CLP."""
@@ -77,7 +142,7 @@ def processar_fila_escrita_ppcp(plc: DeltaPLCModbusDriver):
 
             logger.info(f"📥 Recebido da Nuvem (PPCP): Inserir {val} no Reg D{reg_alvo}")
 
-            if plc.escrever_32bits_dint(reg_alvo, val):
+            if escrever_dint_delta(plc, reg_alvo, val):
                 supabase.table("fila_comandos_ppcp").update(
                     {
                         "status": "PROCESSADO",
@@ -109,8 +174,8 @@ def capturar_batelada_setor(plc: DeltaPLCModbusDriver):
             reg_base = cfg["base_reg"]
             break
 
-    num_batelada = plc.ler_32bits_dint(308)
-    vol_raw = plc.ler_32bits_dint(reg_base)
+    num_batelada = ler_dint_delta(plc, 308)
+    vol_raw = ler_dint_delta(plc, reg_base)
     vol = vol_raw / 100.0 if vol_raw > 100 else float(vol_raw)
 
     payload = {
@@ -118,16 +183,16 @@ def capturar_batelada_setor(plc: DeltaPLCModbusDriver):
         "numero_batelada": num_batelada,
         "setor": setor_identificado,
         "volume_m3": vol,
-        "pedrisco_kg": plc.ler_32bits_dint(reg_base + 2),
-        "seixo_medio_kg": plc.ler_32bits_dint(reg_base + 4),
-        "seixo_fino_kg": plc.ler_32bits_dint(reg_base + 6),
-        "areia_kg": plc.ler_32bits_dint(reg_base + 8),
-        "cimento_kg": plc.ler_32bits_dint(reg_base + 10),
-        "agua_l": plc.ler_32bits_dint(reg_base + 12),
-        "aditivo1_l": plc.ler_32bits_dint(reg_base + 14),
-        "aditivo2_l": plc.ler_32bits_dint(reg_base + 16),
-        "umidade_areia": plc.ler_32bits_dint(262) / 10.0,
-        "umidade_seixo": plc.ler_32bits_dint(264) / 10.0,
+        "pedrisco_kg": ler_dint_delta(plc, reg_base + 2),
+        "seixo_medio_kg": ler_dint_delta(plc, reg_base + 4),
+        "seixo_fino_kg": ler_dint_delta(plc, reg_base + 6),
+        "areia_kg": ler_dint_delta(plc, reg_base + 8),
+        "cimento_kg": ler_dint_delta(plc, reg_base + 10),
+        "agua_l": ler_dint_delta(plc, reg_base + 12),
+        "aditivo1_l": ler_dint_delta(plc, reg_base + 14),
+        "aditivo2_l": ler_dint_delta(plc, reg_base + 16),
+        "umidade_areia": ler_dint_delta(plc, 262) / 10.0,
+        "umidade_seixo": ler_dint_delta(plc, 264) / 10.0,
         "data_hora": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -144,7 +209,7 @@ def capturar_batelada_setor(plc: DeltaPLCModbusDriver):
             logger.info(f"💾 Batelada #{num_batelada} SALVA NO BANCO LOCAL (OFFLINE)!")
             gravou_com_sucesso = True
     except Exception as e:
-        logger.warning(f"⚠️ Queda de Internet. Guardando Batelada #{num_batelada} no SQLite local.")
+        logger.warning(f"⚠️ Queda de Internet. Guardando Batelada #{num_batelada} no SQLite local: {e}")
         salvar_registro_offline("producao_bateladas", payload)
         gravou_com_sucesso = True
 
@@ -157,12 +222,12 @@ def capturar_batelada_setor(plc: DeltaPLCModbusDriver):
 def sincronizar_telemetria_geral(plc: DeltaPLCModbusDriver):
     """
     Sincroniza o estoque físico retentivo (D240, D242, D244) com a nuvem
-    usando estritamente as colunas homologadas da tabela estoque_centrais.
+    usando a função de leitura corrigida ler_dint_delta.
     """
     try:
-        cimento_est = plc.ler_32bits_dint(240)
-        ad1_est = plc.ler_32bits_dint(242)
-        ad2_est = plc.ler_32bits_dint(244)
+        cimento_est = ler_dint_delta(plc, 240)
+        ad1_est = ler_dint_delta(plc, 242)
+        ad2_est = ler_dint_delta(plc, 244)
 
         if supabase:
             payload_homologado = {
@@ -180,6 +245,7 @@ def sincronizar_telemetria_geral(plc: DeltaPLCModbusDriver):
 
     except Exception as e:
         logger.error(f"Erro na telemetria geral: {e}")
+
 
 def main():
     logger.info(f"🚀 AGENTE PREMAZON EDGE INICIADO - CENTRAL {CENTRAL_ID} ({CLP_IP}:{CLP_PORT})")
