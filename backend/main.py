@@ -471,4 +471,65 @@ def obter_consumo_por_setor():
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao processar relatório por setor: {str(e)}",
+        )@app.get("/api/estoque/centrais")
+def obter_estoque_centrais():
+    # 1. TENTA LER O VALOR MAIS RECENTE LIDO DIRETO DO CLP (SQLITE LOCAL)
+    cache_local = ler_cache_local_sqlite()
+    
+    # Se o cache local já tiver dados lidos do CLP, usa eles para alimentar a tela
+    if cache_local and cache_local.get("sucesso") and cache_local.get("centrais"):
+        return cache_local
+
+    # 2. FALLBACK: Se o SQLite estiver vazio, tenta ler da nuvem (Supabase)
+    if not supabase:
+        return cache_local
+
+    try:
+        res_estoque = supabase.table("estoque_centrais").select("*").execute()
+        res_historico = (
+            supabase.table("abastecimentos_ppcp")
+            .select("*")
+            .order("data_hora", desc=True)
+            .limit(30)
+            .execute()
         )
+        res_pendentes = (
+            supabase.table("fila_comandos_ppcp")
+            .select("id", count="exact")
+            .eq("status", "PENDENTE")
+            .execute()
+        )
+
+        registros = res_estoque.data or []
+        historico = res_historico.data or []
+        total_pendentes = res_pendentes.count if res_pendentes.count is not None else 0
+
+        centrais = {
+            1: {
+                "nome": "Central 01 (Estrutura)",
+                "cimento_kg": 0, "aditivo1_l": 0, "aditivo2_l": 0,
+                "status": "OFFLINE", "setor_ativo": "IDLE", "clp_on": False
+            }
+        }
+
+        for item in registros:
+            c_id = item.get("central_id")
+            if c_id in centrais:
+                centrais[c_id]["cimento_kg"] = int(item.get("cimento_kg") or 0)
+                centrais[c_id]["aditivo1_l"] = int(item.get("aditivo1_l") or 0)
+                centrais[c_id]["aditivo2_l"] = int(item.get("aditivo2_l") or 0)
+                centrais[c_id]["status"] = "ONLINE"
+
+        return {
+            "sucesso": True,
+            "totais_globais": {
+                "total_cimento_kg": sum(c["cimento_kg"] for c in centrais.values()),
+                "total_aditivo1_l": sum(c["aditivo1_l"] for c in centrais.values()),
+                "total_aditivo2_l": sum(c["aditivo2_l"] for c in centrais.values()),
+            },
+            "centrais": centrais,
+            "historico": historico,
+            "total_pendentes": total_pendentes
+        }
+    except Exception as e:
+        return cache_local

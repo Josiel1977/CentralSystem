@@ -122,6 +122,58 @@
             </div>
         </div>
 
+        <!-- PAINEL DE ACUMULADOS DIÁRIOS DE MATERIAIS & UMIDADE (ESPELHAMENTO CLP DELTA D10 - D264) -->
+        <section class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-amber-400"></i> Totais de Materiais Doses/Dia (Espelhamento CLP)
+                </h2>
+                <div class="flex gap-4 text-xs font-bold">
+                    <span class="text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20">
+                        Umidade Areia: <strong id="umid-areia" class="text-white">0.0%</strong>
+                    </span>
+                    <span class="text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20">
+                        Umidade Seixo: <strong id="umid-seixo" class="text-white">0.0%</strong>
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Pedrisco</p>
+                    <p id="tot-pedrisco" class="text-base font-bold text-slate-200 mt-1">0 kg</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Seixo Médio</p>
+                    <p id="tot-seixo-med" class="text-base font-bold text-slate-200 mt-1">0 kg</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Seixo Fino</p>
+                    <p id="tot-seixo-fin" class="text-base font-bold text-slate-200 mt-1">0 kg</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Areia</p>
+                    <p id="tot-areia" class="text-base font-bold text-amber-300 mt-1">0 kg</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Cimento Tot.</p>
+                    <p id="tot-cimento" class="text-base font-bold text-sky-300 mt-1">0 kg</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Água</p>
+                    <p id="tot-agua" class="text-base font-bold text-blue-400 mt-1">0 L</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Aditivo 1</p>
+                    <p id="tot-ad1" class="text-base font-bold text-purple-300 mt-1">0 L</p>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Aditivo 2</p>
+                    <p id="tot-ad2" class="text-base font-bold text-purple-300 mt-1">0 L</p>
+                </div>
+            </div>
+        </section>
+
         <!-- ==================== MÓDULO 1: VISÃO EXECUTIVA CEO ==================== -->
         <div id="conteudo-ceo" class="space-y-8">
             <section class="bg-gradient-to-r from-slate-800 via-indigo-950 to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
@@ -436,6 +488,7 @@
                 if (data.sucesso) {
                     atualizarCardsGlobais(data.totais_globais, data.total_pendentes);
                     atualizarGridCentrais(data.centrais);
+                    atualizarTotaisMateriaisCLP(data.centrais);
                     
                     const central1 = data.centrais[1];
                     const setorAtivo = central1 ? (central1.setor_ativo || "IDLE") : "IDLE";
@@ -474,6 +527,23 @@
                     statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
                 }
             }
+        }
+
+        function atualizarTotaisMateriaisCLP(centrais) {
+            if (!centrais) return;
+            const c1 = centrais[1] || {};
+
+            document.getElementById("tot-pedrisco").innerText = `${(c1.pedrisco_total_kg || 0).toLocaleString('pt-BR')} kg`;
+            document.getElementById("tot-seixo-med").innerText = `${(c1.seixo_medio_total_kg || 0).toLocaleString('pt-BR')} kg`;
+            document.getElementById("tot-seixo-fin").innerText = `${(c1.seixo_fino_total_kg || 0).toLocaleString('pt-BR')} kg`;
+            document.getElementById("tot-areia").innerText = `${(c1.areia_total_kg || 0).toLocaleString('pt-BR')} kg`;
+            document.getElementById("tot-cimento").innerText = `${(c1.cimento_total_kg || 0).toLocaleString('pt-BR')} kg`;
+            document.getElementById("tot-agua").innerText = `${(c1.agua_total_l || 0).toLocaleString('pt-BR')} L`;
+            document.getElementById("tot-ad1").innerText = `${(c1.aditivo1_total_l || 0).toLocaleString('pt-BR')} L`;
+            document.getElementById("tot-ad2").innerText = `${(c1.aditivo2_total_l || 0).toLocaleString('pt-BR')} L`;
+
+            document.getElementById("umid-areia").innerText = `${(c1.umidade_areia || 0).toFixed(1)}%`;
+            document.getElementById("umid-seixo").innerText = `${(c1.umidade_seixo || 0).toFixed(1)}%`;
         }
 
         function destacarSetorAtivo(setorNome) {
@@ -518,7 +588,6 @@
 
         function atualizarCardsGlobais(totais, pendentes) {
             if (!totais) return;
-            // Preserva o último valor de estoque lido se o novo vier zerado por instabilidade
             if (totais.total_cimento_kg > 0) {
                 document.getElementById("card-cimento").textContent = `${totais.total_cimento_kg.toLocaleString('pt-BR')} kg`;
             }
