@@ -24,31 +24,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(f"PremazonSyncCentral{CENTRAL_ID}")
 
+# Inicializa o banco SQLite local para contingência offline
 init_local_db()
 
+
 def conectar_supabase() -> Client:
+    """Tenta inicializar/conectar o cliente Supabase."""
     try:
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as err:
         logger.error(f"⚠️ Supabase indisponível no momento: {err}")
         return None
 
+
 supabase: Client = conectar_supabase()
 
+# Mapeamento do espelhamento por setor para registradores baixos (D28 a D152) - Conforme Ladder
 MAPA_SETORES = {
     "ESTRUTURA": {"flag_bit": 30, "base_reg": 28},
-    "POSTE": {"flag_bit": 31, "base_reg": 46},
-    "PAINEL": {"flag_bit": 32, "base_reg": 64},
-    "LAJE": {"flag_bit": 33, "base_reg": 82},
-    "OUTROS": {"flag_bit": 34, "base_reg": 136},
+    "POSTE":     {"flag_bit": 31, "base_reg": 46},
+    "PAINEL":    {"flag_bit": 32, "base_reg": 64},
+    "LAJE":      {"flag_bit": 33, "base_reg": 82},
+    "OUTROS":    {"flag_bit": 34, "base_reg": 136},
 }
 
+
 # ==============================================================================
-# FUNÇÕES DE LEITURA 16 BITS (INT) E 32 BITS (DINT) COM OFFSET MODBUS DELTA (+4096)
+# FUNÇÕES DE LEITURA E ESCRITA MODBUS NATIVAS (COMPATÍVEIS COM PYMODBUS v3.x+)
 # ==============================================================================
 
 def ler_dint_32bits(client: ModbusTcpClient, reg_d: int) -> int:
-    """Lê valor DINT de 32 bits (2 registradores) no CLP Delta DVP."""
+    """Lê valor DINT (32 bits) com offset +4096 do CLP Delta DVP."""
     modbus_addr = reg_d + 4096
     try:
         rr = client.read_holding_registers(modbus_addr, count=2)
@@ -65,7 +71,7 @@ def ler_dint_32bits(client: ModbusTcpClient, reg_d: int) -> int:
 
 
 def ler_int_16bits(client: ModbusTcpClient, reg_d: int) -> int:
-    """Lê valor INT de 16 bits (1 registrador) no CLP Delta DVP (Ex: Umidades D262, D264)."""
+    """Lê valor INT (16 bits) com offset +4096 do CLP Delta DVP (Ex: D154, D262, D264)."""
     modbus_addr = reg_d + 4096
     try:
         rr = client.read_holding_registers(modbus_addr, count=1)
@@ -80,7 +86,7 @@ def ler_int_16bits(client: ModbusTcpClient, reg_d: int) -> int:
 
 
 def ler_bit_m(client: ModbusTcpClient, bit_m: int) -> bool:
-    """Lê o estado do bit/memória M no CLP Delta (Offset +2048)."""
+    """Lê o estado da memória M no CLP Delta (Offset Modbus +2048)."""
     modbus_addr = bit_m + 2048
     try:
         rr = client.read_coils(modbus_addr, count=1)
@@ -92,7 +98,7 @@ def ler_bit_m(client: ModbusTcpClient, bit_m: int) -> bool:
 
 
 def escrever_dint_32bits(client: ModbusTcpClient, reg_d: int, valor: int) -> bool:
-    """Escreve um valor DINT de 32 bits em 2 registradores do CLP Delta."""
+    """Escreve um valor DINT (32 bits) nos registradores D do CLP Delta."""
     modbus_addr = reg_d + 4096
     val = int(valor) & 0xFFFFFFFF
     low_word = val & 0xFFFF
@@ -106,7 +112,7 @@ def escrever_dint_32bits(client: ModbusTcpClient, reg_d: int, valor: int) -> boo
 
 
 def escrever_bit_m(client: ModbusTcpClient, bit_m: int, estado: bool) -> bool:
-    """Escreve True/False em um bit M do CLP Delta."""
+    """Escreve True/False em uma memória M do CLP Delta (Offset +2048)."""
     modbus_addr = bit_m + 2048
     try:
         rq = client.write_coil(modbus_addr, estado)
@@ -116,10 +122,35 @@ def escrever_bit_m(client: ModbusTcpClient, bit_m: int, estado: bool) -> bool:
 
 
 # ==============================================================================
-# SINCRONIZAÇÃO DA TELEMETRIA COMPLETA
+# LÓGICA DE TELEMETRIA, BATELADAS E COMANDOS PPCP
 # ==============================================================================
 
+def obter_setor_e_status_clp(client: ModbusTcpClient):
+    """Lê memórias M do CLP Delta para identificar Setor Ativo (M30-M34) e CLP Ligado (M36)."""
+    clp_on = ler_bit_m(client, 36)
+
+    setor_ativo = "IDLE"
+    mapa_bits_setor = {
+        30: "ESTRUTURA",
+        31: "POSTE",
+        32: "PAINEL",
+        33: "LAJE",
+        34: "OUTROS"
+    }
+
+    for bit_m, nome_setor in mapa_bits_setor.items():
+        if ler_bit_m(client, bit_m):
+            setor_ativo = nome_setor
+            break
+
+    return setor_ativo, clp_on
+
+
 def sincronizar_telemetria_geral(client: ModbusTcpClient):
+    """
+    Sincroniza os estoques retentivos dos silos (D240-D244), acumuladores diários (D10-D26),
+    resumo por setor (D28-D152), umidades (D262-D264) e batelada atual (D154) com a nuvem.
+    """
     global supabase
 
     # 1. Estoque Retentivo dos Silos (D240, D242, D244)
@@ -127,8 +158,10 @@ def sincronizar_telemetria_geral(client: ModbusTcpClient):
     ad1_est = ler_dint_32bits(client, 242)
     ad2_est = ler_dint_32bits(client, 244)
 
-    # 2. Acumuladores Totais Diários (Espelhamento Ladder D10 a D26)
-    vol_tot = ler_dint_32bits(client, 10) / 100.0 if ler_dint_32bits(client, 10) > 0 else 0.0
+    # 2. Acumuladores Totais Diários (D10 a D26)
+    vol_tot_raw = ler_dint_32bits(client, 10)
+    vol_tot = vol_tot_raw / 100.0 if vol_tot_raw > 0 else 0.0
+
     pedrisco_tot = ler_dint_32bits(client, 12)
     seixo_med_tot = ler_dint_32bits(client, 14)
     seixo_fin_tot = ler_dint_32bits(client, 16)
@@ -138,12 +171,34 @@ def sincronizar_telemetria_geral(client: ModbusTcpClient):
     ad1_tot = ler_dint_32bits(client, 24)
     ad2_tot = ler_dint_32bits(client, 26)
 
-    # 3. Sensores de Umidade (Movidos via MOV - 16 bits D262 e D264)
+    # 3. Leitura direta do D154 (Número da Batelada)
+    num_batelada_atual = ler_int_16bits(client, 154)
+
+    # 4. Resumo por Setor
+    resumo_setores = {}
+    for nome_setor, cfg in MAPA_SETORES.items():
+        base = cfg["base_reg"]
+        vol_s_raw = ler_dint_32bits(client, base)
+        resumo_setores[nome_setor] = {
+            "volume_m3": vol_s_raw / 100.0 if vol_s_raw > 0 else 0.0,
+            "pedrisco_kg": ler_dint_32bits(client, base + 2),
+            "seixo_medio_kg": ler_dint_32bits(client, base + 4),
+            "seixo_fino_kg": ler_dint_32bits(client, base + 6),
+            "areia_kg": ler_dint_32bits(client, base + 8),
+            "cimento_kg": ler_dint_32bits(client, base + 10),
+            "agua_l": ler_dint_32bits(client, base + 12),
+            "aditivo1_l": ler_dint_32bits(client, base + 14),
+            "aditivo2_l": ler_dint_32bits(client, base + 16),
+        }
+
+    # 5. Sensores de Umidade
     umid_areia = ler_int_16bits(client, 262) / 10.0
     umid_seixo = ler_int_16bits(client, 264) / 10.0
 
-    # Payload local completo (Salvo no SQLite local)
-    payload_local = {
+    # 6. Setor Ativo e Status
+    setor_ativo, clp_on = obter_setor_e_status_clp(client)
+
+    payload = {
         "central_id": CENTRAL_ID,
         "cimento_kg": cimento_est,
         "aditivo1_l": ad1_est,
@@ -159,37 +214,34 @@ def sincronizar_telemetria_geral(client: ModbusTcpClient):
         "aditivo2_total_l": ad2_tot,
         "umidade_areia": umid_areia,
         "umidade_seixo": umid_seixo,
+        "setor_ativo": setor_ativo,
+        "clp_on": clp_on,
+        "numero_batelada": num_batelada_atual,
+        "dados_setores_json": resumo_setores,
         "ultima_atualizacao": datetime.now(timezone.utc).isoformat(),
     }
 
-    # Payload para a nuvem Supabase (Garante resposta 200 OK sem dar conflito de schema)
-    payload_nuvem = {
-        "central_id": CENTRAL_ID,
-        "cimento_kg": cimento_est,
-        "aditivo1_l": ad1_est,
-        "aditivo2_l": ad2_est,
-        "ultima_atualizacao": datetime.now(timezone.utc).isoformat(),
-    }
-
-    # Salva sempre no cache SQLite local primeiro para alimentar a tela local imediatamente
-    salvar_registro_offline("estoque_centrais", payload_local)
+    salvar_registro_offline("estoque_centrais", payload)
 
     try:
         if not supabase:
             supabase = conectar_supabase()
 
         if supabase:
-            supabase.table("estoque_centrais").upsert(payload_nuvem).execute()
+            supabase.table("estoque_centrais").upsert(payload).execute()
             logger.info(
-                f"📊 Leitura Geral -> Silo Cim: {cimento_est}kg | Vol Tot: {vol_tot}m³ | "
-                f"Areia Tot: {areia_tot}kg | Umid Areia: {umid_areia}%"
+                f"📊 Nuvem Sincronizada -> Vol Tot: {vol_tot} m³ | "
+                f"Batelada D154: #{num_batelada_atual} | Setor: {setor_ativo}"
             )
             sincronizar_backlog_com_nuvem(supabase)
     except Exception as e:
-        logger.warning(f"⚠️ Erro ao enviar à nuvem (Manteve leitura local salva): {e}")
-
+        logger.warning(f"⚠️ Falha ao sincronizar com Supabase: {e}")
 
 def capturar_batelada_setor(client: ModbusTcpClient):
+    """
+    Lê o pulso M110=1 indicando fim de dosagem da batelada, insere na tabela producao_bateladas
+    da nuvem e executa o handshake resetando M110=0.
+    """
     global supabase
     try:
         m110_ativo = ler_bit_m(client, 110)
@@ -207,9 +259,11 @@ def capturar_batelada_setor(client: ModbusTcpClient):
                 reg_base = cfg["base_reg"]
                 break
 
-        num_batelada = ler_dint_32bits(client, 308)
+        # Leitura da batelada em D154
+        num_batelada = ler_int_16bits(client, 154)
+        
         vol_raw = ler_dint_32bits(client, reg_base)
-        vol = vol_raw / 100.0 if vol_raw > 100 else float(vol_raw)
+        vol = vol_raw / 100.0 if vol_raw >= 100 else float(vol_raw)
 
         payload = {
             "central_id": CENTRAL_ID,
@@ -232,12 +286,13 @@ def capturar_batelada_setor(client: ModbusTcpClient):
         try:
             if supabase:
                 supabase.table("producao_bateladas").insert(payload).execute()
-                logger.info(f"🌐 Batelada #{num_batelada} ({setor_identificado}) GRAVADA NA NUVEM!")
+                logger.info(f"🌐 Batelada #{num_batelada} ({setor_identificado}) -> {vol} m³ GRAVADA NA NUVEM!")
             else:
                 salvar_registro_offline("producao_bateladas", payload)
         except Exception as e:
             salvar_registro_offline("producao_bateladas", payload)
 
+        # HANDSHAKE INDUSTRIAL: Reseta M110 para liberar o CLP
         escrever_bit_m(client, 110, False)
         logger.info("🔄 Handshake concluído: Bit M110 resetado no CLP.")
 
@@ -246,6 +301,7 @@ def capturar_batelada_setor(client: ModbusTcpClient):
 
 
 def processar_fila_escrita_ppcp(client: ModbusTcpClient):
+    """Descarrega ordens pendentes do PPCP nos registradores D248, D252, D256 do CLP."""
     global supabase
     if not supabase:
         return
@@ -281,29 +337,35 @@ def processar_fila_escrita_ppcp(client: ModbusTcpClient):
         pass
 
 
+# ==============================================================================
+# RECONEXÃO ROBUSTA E LOOP PRINCIPAL
+# ==============================================================================
+
 def main():
     logger.info(f"🚀 AGENTE PREMAZON EDGE INICIADO - CENTRAL {CENTRAL_ID} ({CLP_IP}:{CLP_PORT})")
     
-    client = ModbusTcpClient(CLP_IP, port=CLP_PORT, timeout=2.0)
-
     while True:
+        client = None
         try:
-            if not client.is_socket_open():
-                logger.info(f"🔌 Conectando socket Modbus TCP no CLP ({CLP_IP}:{CLP_PORT})...")
-                client.connect()
-
-            if client.is_socket_open():
+            client = ModbusTcpClient(CLP_IP, port=CLP_PORT, timeout=2.0)
+            
+            if client.connect():
                 sincronizar_telemetria_geral(client)
                 capturar_batelada_setor(client)
                 processar_fila_escrita_ppcp(client)
+            else:
+                logger.warning(f"⏳ Aguardando comunicação com o CLP Delta ({CLP_IP}:{CLP_PORT})...")
 
         except Exception as e:
-            logger.error(f"🔴 Erro de Comunicação com o CLP Delta: {e}")
-            logger.info("🔄 Reiniciando socket em 3 segundos...")
-            client.close()
-            time.sleep(3.0)
+            logger.error(f"🔴 Erro de Comunicação Modbus: {e}")
+        finally:
+            if client:
+                try:
+                    client.close()
+                except Exception:
+                    pass
 
-        time.sleep(1.0)
+        time.sleep(2.0)
 
 
 if __name__ == "__main__":

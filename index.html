@@ -1,949 +1,1610 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PREMAZON INDUSTRIAL - Telemetria CLP Delta & Gestão Operacional</title>
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      PREMAZON INDUSTRIAL - Telemetria CLP Delta & Gestão Operacional
+    </title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+      }
 
-        @media print {
-            header, nav, form, .no-print, select, button { display: none !important; }
-            body { background: white !important; color: black !important; }
-            .bg-slate-800, .bg-slate-900, .bg-gradient-to-r { background: white !important; border-color: #cbd5e1 !important; color: black !important; }
-            .text-white, .text-slate-200, .text-slate-300, .text-slate-400 { color: black !important; }
+      @media print {
+        header,
+        nav,
+        form,
+        .no-print,
+        select,
+        button {
+          display: none !important;
         }
+        body {
+          background: white !important;
+          color: black !important;
+        }
+        .bg-slate-800,
+        .bg-slate-900,
+        .bg-gradient-to-r {
+          background: white !important;
+          border-color: #cbd5e1 !important;
+          color: black !important;
+        }
+        .text-white,
+        .text-slate-200,
+        .text-slate-300,
+        .text-slate-400 {
+          color: black !important;
+        }
+      }
     </style>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
-
+  </head>
+  <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
     <!-- BARRA SUPERIOR (HEADER) -->
-    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="bg-blue-600 p-2 rounded-lg text-white font-bold text-xl">P</div>
-                <div>
-                    <h1 class="text-lg font-extrabold text-white tracking-wider">PREMAZON INDUSTRIAL</h1>
-                    <p class="text-xs text-blue-400 font-medium">Telemetria CLP Delta & Gestão Operacional</p>
-                </div>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700">
-                    <span class="relative flex h-2.5 w-2.5">
-                        <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span id="status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                    <span id="status-texto" class="text-xs font-bold text-emerald-400 tracking-wider">CLP ONLINE</span>
-                </div>
-                <button onclick="carregarDadosGerais()" class="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition" title="Atualizar dados">
-                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-                </button>
-            </div>
+    <header
+      class="bg-slate-800/90 backdrop-blur border-b border-slate-700 sticky top-0 z-50"
+    >
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center"
+      >
+        <div class="flex items-center space-x-3">
+          <div class="bg-blue-600 p-2 rounded-lg text-white font-bold text-xl">
+            P
+          </div>
+          <div>
+            <h1 class="text-lg font-extrabold text-white tracking-wider">
+              PREMAZON INDUSTRIAL
+            </h1>
+            <p class="text-xs text-blue-400 font-medium">
+              Telemetria CLP Delta & Gestão Operacional
+            </p>
+          </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex border-t border-slate-700/60">
-            <button onclick="trocarAba('ceo')" id="tab-ceo" class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-blue-500 text-blue-400 transition">
-                <i class="fa-solid fa-chart-line text-xs"></i> Cockpit CEO / Diretoria
-            </button>
-            <button onclick="trocarAba('ppcp')" id="tab-ppcp" class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">
-                <i class="fa-solid fa-truck-ramp-box text-xs"></i> Módulo PPCP / Abastecimento
-            </button>
-            <button onclick="trocarAba('producao')" id="tab-producao" class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">
-                <i class="fa-solid fa-clipboard-check text-xs"></i> Produção & Planix
-            </button>
+        <div class="flex items-center space-x-4">
+          <div
+            class="flex items-center space-x-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700"
+          >
+            <span class="relative flex h-2.5 w-2.5">
+              <span
+                id="status-ping"
+                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+              ></span>
+              <span
+                id="status-dot"
+                class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"
+              ></span>
+            </span>
+            <span
+              id="status-texto"
+              class="text-xs font-bold text-emerald-400 tracking-wider"
+              >CLP ONLINE</span
+            >
+          </div>
+          <button
+            onclick="carregarDadosGerais()"
+            class="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition"
+            title="Atualizar dados"
+          >
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </button>
         </div>
+      </div>
+
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex border-t border-slate-700/60"
+      >
+        <button
+          onclick="trocarAba('ceo')"
+          id="tab-ceo"
+          class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-blue-500 text-blue-400 transition"
+        >
+          <i class="fa-solid fa-chart-line text-xs"></i> Cockpit CEO / Diretoria
+        </button>
+        <button
+          onclick="trocarAba('ppcp')"
+          id="tab-ppcp"
+          class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition"
+        >
+          <i class="fa-solid fa-truck-ramp-box text-xs"></i> Módulo PPCP /
+          Abastecimento
+        </button>
+        <button
+          onclick="trocarAba('producao')"
+          id="tab-producao"
+          class="px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition"
+        >
+          <i class="fa-solid fa-clipboard-check text-xs"></i> Produção & Planix
+        </button>
+      </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6 w-full">
-
-        <!-- CARDS DE RESUMO GLOBAL -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Total Cimento</p>
-                    <h3 id="card-cimento" class="text-xl font-bold text-white mt-1">0 kg</h3>
-                    <p class="text-xs text-emerald-400 mt-1">Silos Integrados</p>
-                </div>
-                <div class="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
-                    <i data-lucide="database" class="w-5 h-5"></i>
-                </div>
-            </div>
-
-            <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Aditivo 1</p>
-                    <h3 id="card-aditivo1" class="text-xl font-bold text-purple-400 mt-1">0 L</h3>
-                    <p class="text-xs text-slate-400 mt-1">Plastificante [D252]</p>
-                </div>
-                <div class="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl">
-                    <i data-lucide="flask-conical" class="w-5 h-5"></i>
-                </div>
-            </div>
-
-            <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Aditivo 2</p>
-                    <h3 id="card-aditivo2" class="text-xl font-bold text-indigo-400 mt-1">0 L</h3>
-                    <p class="text-xs text-slate-400 mt-1">Acelerador [D256]</p>
-                </div>
-                <div class="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
-                    <i data-lucide="flask-round" class="w-5 h-5"></i>
-                </div>
-            </div>
-
-            <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Fila CLP</p>
-                    <h3 id="card-pendentes" class="text-xl font-bold text-amber-400 mt-1">0</h3>
-                    <p class="text-xs text-slate-400 mt-1">Comandos Modbus</p>
-                </div>
-                <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl">
-                    <i data-lucide="send" class="w-5 h-5"></i>
-                </div>
-            </div>
-
-            <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold">Meta Global Hoje</p>
-                    <h3 id="card-meta-global" class="text-xl font-bold text-emerald-400 mt-1">0%</h3>
-                    <p class="text-xs text-slate-400 mt-1">Planix vs Realizado</p>
-                </div>
-                <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                    <i data-lucide="target" class="w-5 h-5"></i>
-                </div>
-            </div>
+    <main
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6 w-full"
+    >
+      <!-- CARDS DE RESUMO GLOBAL -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div
+          class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold">
+              Total Cimento Silo
+            </p>
+            <h3 id="card-cimento" class="text-xl font-bold text-white mt-1">
+              0 kg
+            </h3>
+            <p class="text-xs text-emerald-400 mt-1">Silos Integrados [D240]</p>
+          </div>
+          <div class="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
         </div>
 
-        <!-- PAINEL DE ACUMULADOS DIÁRIOS DE MATERIAIS & UMIDADE (ESPELHAMENTO CLP DELTA D10 - D264) -->
-        <section class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                <h2 class="text-base font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-boxes-stacked text-amber-400"></i> Totais de Materiais Doses/Dia (Espelhamento CLP)
-                </h2>
-                <div class="flex gap-4 text-xs font-bold">
-                    <span class="text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20">
-                        Umidade Areia: <strong id="umid-areia" class="text-white">0.0%</strong>
-                    </span>
-                    <span class="text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20">
-                        Umidade Seixo: <strong id="umid-seixo" class="text-white">0.0%</strong>
-                    </span>
-                </div>
-            </div>
+        <div
+          class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold">
+              Aditivo 1 Silo
+            </p>
+            <h3
+              id="card-aditivo1"
+              class="text-xl font-bold text-purple-400 mt-1"
+            >
+              0 L
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Plastificante [D242]</p>
+          </div>
+          <div class="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl">
+            <i data-lucide="flask-conical" class="w-5 h-5"></i>
+          </div>
+        </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Pedrisco</p>
-                    <p id="tot-pedrisco" class="text-base font-bold text-slate-200 mt-1">0 kg</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Seixo Médio</p>
-                    <p id="tot-seixo-med" class="text-base font-bold text-slate-200 mt-1">0 kg</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Seixo Fino</p>
-                    <p id="tot-seixo-fin" class="text-base font-bold text-slate-200 mt-1">0 kg</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Areia</p>
-                    <p id="tot-areia" class="text-base font-bold text-amber-300 mt-1">0 kg</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Cimento Tot.</p>
-                    <p id="tot-cimento" class="text-base font-bold text-sky-300 mt-1">0 kg</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Água</p>
-                    <p id="tot-agua" class="text-base font-bold text-blue-400 mt-1">0 L</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Aditivo 1</p>
-                    <p id="tot-ad1" class="text-base font-bold text-purple-300 mt-1">0 L</p>
-                </div>
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase">Aditivo 2</p>
-                    <p id="tot-ad2" class="text-base font-bold text-purple-300 mt-1">0 L</p>
-                </div>
-            </div>
+        <div
+          class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold">
+              Aditivo 2 Silo
+            </p>
+            <h3
+              id="card-aditivo2"
+              class="text-xl font-bold text-indigo-400 mt-1"
+            >
+              0 L
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Acelerador [D244]</p>
+          </div>
+          <div class="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
+            <i data-lucide="flask-round" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div
+          class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold">
+              Fila CLP
+            </p>
+            <h3
+              id="card-pendentes"
+              class="text-xl font-bold text-amber-400 mt-1"
+            >
+              0
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Comandos Modbus</p>
+          </div>
+          <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl">
+            <i data-lucide="send" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div
+          class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold">
+              Meta Global Hoje
+            </p>
+            <h3
+              id="card-meta-global"
+              class="text-xl font-bold text-emerald-400 mt-1"
+            >
+              0%
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Planix vs Realizado</p>
+          </div>
+          <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl">
+            <i data-lucide="target" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINEL DE ACUMULADOS DIÁRIOS DE MATERIAIS & UMIDADE (ESPELHAMENTO CLP DELTA D10 - D264) -->
+      <section
+        class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl"
+      >
+        <div
+          class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2"
+        >
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-boxes-stacked text-amber-400"></i> Totais de
+            Materiais Doses/Dia (Espelhamento CLP)
+          </h2>
+          <div class="flex gap-4 text-xs font-bold">
+            <span
+              class="text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20"
+            >
+              Umidade Areia:
+              <strong id="umid-areia" class="text-white">0.0%</strong>
+            </span>
+            <span
+              class="text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20"
+            >
+              Umidade Seixo:
+              <strong id="umid-seixo" class="text-white">0.0%</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- GRID COM OS 10 CARDS DE TELEMETRIA COMPLETA (INCLUINDO D10 E D154) -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-3">
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-emerald-500/40"
+          >
+            <p class="text-[10px] text-emerald-400 font-extrabold uppercase">
+              Vol. Total
+            </p>
+            <p
+              id="tot-vol-geral"
+              class="text-base font-black text-emerald-400 mt-1"
+            >
+              0.00 m³
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-amber-500/40"
+          >
+            <p class="text-[10px] text-amber-400 font-extrabold uppercase">
+              Batelada
+            </p>
+            <p
+              id="tot-num-batelada"
+              class="text-base font-black text-amber-400 mt-1"
+            >
+              0
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Pedrisco
+            </p>
+            <p
+              id="tot-pedrisco"
+              class="text-base font-bold text-slate-200 mt-1"
+            >
+              0 kg
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Seixo Méd.
+            </p>
+            <p
+              id="tot-seixo-med"
+              class="text-base font-bold text-slate-200 mt-1"
+            >
+              0 kg
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Seixo Fin.
+            </p>
+            <p
+              id="tot-seixo-fin"
+              class="text-base font-bold text-slate-200 mt-1"
+            >
+              0 kg
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Areia
+            </p>
+            <p id="tot-areia" class="text-base font-bold text-amber-300 mt-1">
+              0 kg
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Cimento Tot.
+            </p>
+            <p id="tot-cimento" class="text-base font-bold text-sky-300 mt-1">
+              0 kg
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Água
+            </p>
+            <p id="tot-agua" class="text-base font-bold text-blue-400 mt-1">
+              0 L
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Aditivo 1
+            </p>
+            <p id="tot-ad1" class="text-base font-bold text-purple-300 mt-1">
+              0 L
+            </p>
+          </div>
+          <div
+            class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60"
+          >
+            <p class="text-[10px] text-slate-400 font-semibold uppercase">
+              Aditivo 2
+            </p>
+            <p id="tot-ad2" class="text-base font-bold text-purple-300 mt-1">
+              0 L
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== MÓDULO 1: VISÃO EXECUTIVA CEO ==================== -->
+      <div id="conteudo-ceo" class="space-y-8">
+        <section
+          class="bg-gradient-to-r from-slate-800 via-indigo-950 to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4"
+        >
+          <div>
+            <h2 class="text-xl font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-emerald-400"></i> Painel
+              Executivo & Indicadores Estratégicos
+            </h2>
+            <p class="text-xs text-slate-300 mt-1">
+              Consolidação de volume produzido, atingimento de meta e rateio por
+              setor.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <select
+              id="filtroPeriodo"
+              onchange="carregarCockpitCEO()"
+              class="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none"
+            >
+              <option value="hoje">📅 Consolidado Hoje (Diário)</option>
+              <option value="semana">📆 Últimos 7 Dias (Semanal)</option>
+              <option value="mes" selected>🗓️ Mês Atual (Mensal)</option>
+            </select>
+
+            <button
+              onclick="exportarMetasCSV()"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-600/30"
+            >
+              <i class="fa-solid fa-file-excel text-base"></i> Exportar Excel
+            </button>
+
+            <button
+              onclick="window.print()"
+              class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-rose-600/30"
+            >
+              <i class="fa-solid fa-file-pdf text-base"></i> Exportar PDF
+            </button>
+          </div>
         </section>
 
-        <!-- ==================== MÓDULO 1: VISÃO EXECUTIVA CEO ==================== -->
-        <div id="conteudo-ceo" class="space-y-8">
-            <section class="bg-gradient-to-r from-slate-800 via-indigo-950 to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+        <!-- CARDS DE SETORES M30 - M34 -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div
+            id="card-sector-m30"
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-blue-500 shadow-md transition-all duration-300"
+          >
+            <div class="flex justify-between items-center">
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider"
+                >M30 - ESTRUTURA</span
+              >
+              <span
+                id="badge-m30"
+                class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse"
+                >● EM OPERAÇÃO</span
+              >
+            </div>
+            <h4 id="ceo-m30-vol" class="text-2xl font-black text-white mt-2">
+              0.0 m³
+            </h4>
+            <p
+              id="ceo-m30-cim"
+              class="text-xs text-amber-400 font-mono mt-1 font-semibold"
+            >
+              0 kg cimento
+            </p>
+          </div>
+
+          <div
+            id="card-sector-m31"
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-cyan-500 shadow-md transition-all duration-300"
+          >
+            <div class="flex justify-between items-center">
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider"
+                >M31 - POSTE</span
+              >
+              <span
+                id="badge-m31"
+                class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse"
+                >● EM OPERAÇÃO</span
+              >
+            </div>
+            <h4 id="ceo-m31-vol" class="text-2xl font-black text-white mt-2">
+              0.0 m³
+            </h4>
+            <p
+              id="ceo-m31-cim"
+              class="text-xs text-amber-400 font-mono mt-1 font-semibold"
+            >
+              0 kg cimento
+            </p>
+          </div>
+
+          <div
+            id="card-sector-m32"
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-indigo-500 shadow-md transition-all duration-300"
+          >
+            <div class="flex justify-between items-center">
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider"
+                >M32 - PAINEL</span
+              >
+              <span
+                id="badge-m32"
+                class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse"
+                >● EM OPERAÇÃO</span
+              >
+            </div>
+            <h4 id="ceo-m32-vol" class="text-2xl font-black text-white mt-2">
+              0.0 m³
+            </h4>
+            <p
+              id="ceo-m32-cim"
+              class="text-xs text-amber-400 font-mono mt-1 font-semibold"
+            >
+              0 kg cimento
+            </p>
+          </div>
+
+          <div
+            id="card-sector-m33"
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-emerald-500 shadow-md transition-all duration-300"
+          >
+            <div class="flex justify-between items-center">
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider"
+                >M33 - LAJE</span
+              >
+              <span
+                id="badge-m33"
+                class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse"
+                >● EM OPERAÇÃO</span
+              >
+            </div>
+            <h4 id="ceo-m33-vol" class="text-2xl font-black text-white mt-2">
+              0.0 m³
+            </h4>
+            <p
+              id="ceo-m33-cim"
+              class="text-xs text-amber-400 font-mono mt-1 font-semibold"
+            >
+              0 kg cimento
+            </p>
+          </div>
+
+          <div
+            id="card-sector-m34"
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-purple-500 shadow-md transition-all duration-300"
+          >
+            <div class="flex justify-between items-center">
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider"
+                >M34 - OUTROS</span
+              >
+              <span
+                id="badge-m34"
+                class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse"
+                >● EM OPERAÇÃO</span
+              >
+            </div>
+            <h4 id="ceo-m34-vol" class="text-2xl font-black text-white mt-2">
+              0.0 m³
+            </h4>
+            <p
+              id="ceo-m34-cim"
+              class="text-xs text-amber-400 font-mono mt-1 font-semibold"
+            >
+              0 kg cimento
+            </p>
+          </div>
+        </section>
+
+        <!-- OS 3 GRÁFICOS DO COCKPIT CEO -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4"
+          >
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-bullseye text-emerald-400"></i> Meta vs.
+              Produção Real (m³)
+            </h3>
+            <div class="relative w-full h-64">
+              <canvas id="chartMetaVsReal"></canvas>
+            </div>
+          </div>
+
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4"
+          >
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-amber-400"></i> Rateio de
+              Cimento por Setor (%)
+            </h3>
+            <div class="relative w-full h-64">
+              <canvas id="chartSetores"></canvas>
+            </div>
+          </div>
+
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4"
+          >
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-column text-blue-400"></i> Volume
+              Concretado (m³)
+            </h3>
+            <div class="relative w-full h-64">
+              <canvas id="chartVolume"></canvas>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== MÓDULO 2: PPCP & ABASTECIMENTO ==================== -->
+      <div id="conteudo-ppcp" class="space-y-6 hidden">
+        <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5">
+          <h2
+            class="text-base font-semibold text-white mb-4 flex items-center gap-2"
+          >
+            <i data-lucide="activity" class="w-5 h-5 text-blue-400"></i> Status
+            das Centrais de Dosagem em Tempo Real
+          </h2>
+          <div
+            id="grid-centrais"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          ></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 space-y-4"
+          >
+            <div class="border-b border-slate-700 pb-3">
+              <h2
+                class="text-base font-semibold text-white flex items-center gap-2"
+              >
+                <i data-lucide="truck" class="w-5 h-5 text-blue-400"></i>
+                Lançamento de Nota Fiscal (PPCP)
+              </h2>
+              <p class="text-xs text-slate-400">
+                Atualiza os silos e envia ordem ao CLP Delta.
+              </p>
+            </div>
+
+            <form
+              id="form-abastecimento"
+              onsubmit="enviarAbastecimento(event)"
+              class="space-y-3"
+            >
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1"
+                  >Responsável pelo Lançamento</label
+                >
+                <input
+                  type="text"
+                  id="ppcp-usuario"
+                  placeholder="Nome do Operador / PPCP"
+                  required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1"
+                  >Central Alvo</label
+                >
+                <select
+                  id="ppcp-central"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                >
+                  <option value="1">Central 01 (Estrutura)</option>
+                  <option value="2">Central 02 (Columbia)</option>
+                  <option value="3">Central 03 (Artefatos)</option>
+                  <option value="4">Central 04 (Lajes)</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <h2 class="text-xl font-black text-white flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Painel Executivo & Indicadores Estratégicos
-                    </h2>
-                    <p class="text-xs text-slate-300 mt-1">Consolidação de volume produzido, atingimento de meta e rateio por setor.</p>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >Insumo</label
+                  >
+                  <select
+                    id="ppcp-insumo"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  >
+                    <option value="cimento">Cimento (kg) [D248]</option>
+                    <option value="aditivo1">Aditivo 1 (L) [D252]</option>
+                    <option value="aditivo2">Aditivo 2 (L) [D256]</option>
+                  </select>
                 </div>
-
-                <div class="flex flex-wrap items-center gap-3">
-                    <select id="filtroPeriodo" onchange="carregarCockpitCEO()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none">
-                        <option value="hoje">📅 Consolidado Hoje (Diário)</option>
-                        <option value="semana">📆 Últimos 7 Dias (Semanal)</option>
-                        <option value="mes" selected>🗓️ Mês Atual (Mensal)</option>
-                    </select>
-
-                    <button onclick="exportarMetasCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-600/30">
-                        <i class="fa-solid fa-file-excel text-base"></i> Exportar Excel
-                    </button>
-
-                    <button onclick="window.print()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-rose-600/30">
-                        <i class="fa-solid fa-file-pdf text-base"></i> Exportar PDF
-                    </button>
+                <div>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >Quantidade</label
+                  >
+                  <input
+                    type="number"
+                    id="ppcp-quantidade"
+                    placeholder="Ex: 30000"
+                    required
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  />
                 </div>
-            </section>
+              </div>
 
-            <!-- CARDS DE SETORES M30 - M34 -->
-            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div id="card-sector-m30" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-blue-500 shadow-md transition-all duration-300">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M30 - ESTRUTURA</span>
-                        <span id="badge-m30" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
-                    </div>
-                    <h4 id="ceo-m30-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
-                    <p id="ceo-m30-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
-                </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1"
+                  >Número da Nota Fiscal</label
+                >
+                <input
+                  type="text"
+                  id="ppcp-nota"
+                  placeholder="Ex: NF-10542"
+                  required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                />
+              </div>
 
-                <div id="card-sector-m31" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-cyan-500 shadow-md transition-all duration-300">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M31 - POSTE</span>
-                        <span id="badge-m31" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
-                    </div>
-                    <h4 id="ceo-m31-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
-                    <p id="ceo-m31-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
-                </div>
+              <button
+                type="submit"
+                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2"
+              >
+                <i data-lucide="send" class="w-4 h-4"></i> Gravar Nota & Enviar
+                ao CLP
+              </button>
+            </form>
+          </div>
 
-                <div id="card-sector-m32" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-indigo-500 shadow-md transition-all duration-300">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M32 - PAINEL</span>
-                        <span id="badge-m32" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
-                    </div>
-                    <h4 id="ceo-m32-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
-                    <p id="ceo-m32-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
-                </div>
-
-                <div id="card-sector-m33" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-emerald-500 shadow-md transition-all duration-300">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M33 - LAJE</span>
-                        <span id="badge-m33" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
-                    </div>
-                    <h4 id="ceo-m33-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
-                    <p id="ceo-m33-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
-                </div>
-
-                <div id="card-sector-m34" class="bg-slate-800 border border-slate-700/60 rounded-xl p-4 border-t-4 border-t-purple-500 shadow-md transition-all duration-300">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">M34 - OUTROS</span>
-                        <span id="badge-m34" class="hidden text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">● EM OPERAÇÃO</span>
-                    </div>
-                    <h4 id="ceo-m34-vol" class="text-2xl font-black text-white mt-2">0.0 m³</h4>
-                    <p id="ceo-m34-cim" class="text-xs text-amber-400 font-mono mt-1 font-semibold">0 kg cimento</p>
-                </div>
-            </section>
-
-            <!-- OS 3 GRÁFICOS DO COCKPIT CEO -->
-            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
-                    <h3 class="text-base font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-bullseye text-emerald-400"></i> Meta vs. Produção Real (m³)
-                    </h3>
-                    <div class="relative w-full h-64"><canvas id="chartMetaVsReal"></canvas></div>
-                </div>
-
-                <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
-                    <h3 class="text-base font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-chart-pie text-amber-400"></i> Rateio de Cimento por Setor (%)
-                    </h3>
-                    <div class="relative w-full h-64"><canvas id="chartSetores"></canvas></div>
-                </div>
-
-                <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-6 shadow-xl space-y-4">
-                    <h3 class="text-base font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-chart-column text-blue-400"></i> Volume Concretado (m³)
-                    </h3>
-                    <div class="relative w-full h-64"><canvas id="chartVolume"></canvas></div>
-                </div>
-            </section>
-        </div>
-
-        <!-- ==================== MÓDULO 2: PPCP & ABASTECIMENTO ==================== -->
-        <div id="conteudo-ppcp" class="space-y-6 hidden">
-            <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5">
-                <h2 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
-                    <i data-lucide="activity" class="w-5 h-5 text-blue-400"></i> Status das Centrais de Dosagem em Tempo Real
-                </h2>
-                <div id="grid-centrais" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                </div>
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 lg:col-span-2 space-y-4"
+          >
+            <div
+              class="flex justify-between items-center border-b border-slate-700 pb-3"
+            >
+              <h2
+                class="text-base font-semibold text-white flex items-center gap-2"
+              >
+                <i data-lucide="history" class="w-5 h-5 text-blue-400"></i>
+                Histórico de Abastecimentos (PPCP)
+              </h2>
+              <div class="flex gap-2">
+                <button
+                  onclick="exportarNotasCSV()"
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md"
+                >
+                  <i class="fa-solid fa-file-excel text-xs"></i> Exportar Excel
+                </button>
+                <button
+                  onclick="window.print()"
+                  class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md"
+                >
+                  <i class="fa-solid fa-file-pdf text-xs"></i> Exportar PDF
+                </button>
+              </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 space-y-4">
-                    <div class="border-b border-slate-700 pb-3">
-                        <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                            <i data-lucide="truck" class="w-5 h-5 text-blue-400"></i> Lançamento de Nota Fiscal (PPCP)
-                        </h2>
-                        <p class="text-xs text-slate-400">Atualiza os silos e envia ordem ao CLP Delta.</p>
-                    </div>
-
-                    <form id="form-abastecimento" onsubmit="enviarAbastecimento(event)" class="space-y-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Responsável pelo Lançamento</label>
-                            <input type="text" id="ppcp-usuario" placeholder="Nome do Operador / PPCP" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Central Alvo</label>
-                            <select id="ppcp-central" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                                <option value="1">Central 01 (Estrutura)</option>
-                                <option value="2">Central 02 (Columbia)</option>
-                                <option value="3">Central 03 (Artefatos)</option>
-                                <option value="4">Central 04 (Lajes)</option>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Insumo</label>
-                                <select id="ppcp-insumo" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                                    <option value="cimento">Cimento (kg) [D248]</option>
-                                    <option value="aditivo1">Aditivo 1 (L) [D252]</option>
-                                    <option value="aditivo2">Aditivo 2 (L) [D256]</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Quantidade</label>
-                                <input type="number" id="ppcp-quantidade" placeholder="Ex: 30000" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Número da Nota Fiscal</label>
-                            <input type="text" id="ppcp-nota" placeholder="Ex: NF-10542" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                        </div>
-
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                            <i data-lucide="send" class="w-4 h-4"></i> Gravar Nota & Enviar ao CLP
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 lg:col-span-2 space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                            <i data-lucide="history" class="w-5 h-5 text-blue-400"></i> Histórico de Abastecimentos (PPCP)
-                        </h2>
-                        <div class="flex gap-2">
-                            <button onclick="exportarNotasCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md">
-                                <i class="fa-solid fa-file-excel text-xs"></i> Exportar Excel
-                            </button>
-                            <button onclick="window.print()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md">
-                                <i class="fa-solid fa-file-pdf text-xs"></i> Exportar PDF
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-900/60 uppercase font-semibold text-slate-400 border-b border-slate-700">
-                                <tr>
-                                    <th class="py-2.5 px-3">Data/Hora</th>
-                                    <th class="py-2.5 px-3">Central</th>
-                                    <th class="py-2.5 px-3">NF</th>
-                                    <th class="py-2.5 px-3">Insumo</th>
-                                    <th class="py-2.5 px-3">Qtd</th>
-                                    <th class="py-2.5 px-3">Responsável</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabela-historico" class="divide-y divide-slate-700/50">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead
+                  class="bg-slate-900/60 uppercase font-semibold text-slate-400 border-b border-slate-700"
+                >
+                  <tr>
+                    <th class="py-2.5 px-3">Data/Hora</th>
+                    <th class="py-2.5 px-3">Central</th>
+                    <th class="py-2.5 px-3">NF</th>
+                    <th class="py-2.5 px-3">Insumo</th>
+                    <th class="py-2.5 px-3">Qtd</th>
+                    <th class="py-2.5 px-3">Responsável</th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="tabela-historico"
+                  class="divide-y divide-slate-700/50"
+                ></tbody>
+              </table>
             </div>
+          </div>
         </div>
+      </div>
 
-        <!-- ==================== MÓDULO 3: PRODUÇÃO & PLANIX ==================== -->
-        <div id="conteudo-producao" class="space-y-6 hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 space-y-4">
-                    <div class="border-b border-slate-700 pb-3">
-                        <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                            <i data-lucide="clipboard-check" class="w-5 h-5 text-emerald-400"></i> Apontamento de Peças & Metas
-                        </h2>
-                        <p class="text-xs text-slate-400">Conecta a produção de peças e volume (m³) com as metas do Planix.</p>
-                    </div>
-
-                    <form id="form-meta" onsubmit="enviarApontamentoMeta(event)" class="space-y-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Responsável pelo Lançamento</label>
-                            <input type="text" id="meta-usuario" placeholder="Nome do Apontador / Qualidade" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Setor</label>
-                                <select id="meta-setor" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                                    <option value="ESTRUTURA">M30 - Estrutura</option>
-                                    <option value="POSTE">M31 - Poste</option>
-                                    <option value="PAINEL">M32 - Painel</option>
-                                    <option value="LAJE">M33 - Laje</option>
-                                    <option value="OUTROS">M34 - Outros</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">fck (MPa)</label>
-                                <input type="number" id="meta-fck" value="30" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Descrição / Nome da Peça</label>
-                            <input type="text" id="meta-peca" placeholder="Ex: Poste Duplo T 11/1500" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Qtd Peças</label>
-                                <input type="number" id="meta-qtd" value="1" min="1" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Vol. Real (m³)</label>
-                                <input type="number" step="0.01" id="meta-vol-real" placeholder="15.0" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1">Meta Vol (m³)</label>
-                                <input type="number" step="0.01" id="meta-vol-plan" placeholder="12.0" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                            </div>
-                        </div>
-
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                            <i data-lucide="plus-circle" class="w-4 h-4"></i> Registrar Apontamento
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 lg:col-span-2 space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-emerald-400"></i> Acompanhamento de Metas de Produção (Planix)
-                        </h2>
-                        <div class="flex gap-2">
-                            <button onclick="exportarMetasCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md">
-                                <i class="fa-solid fa-file-excel text-xs"></i> Exportar Excel
-                            </button>
-                            <button onclick="window.print()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md">
-                                <i class="fa-solid fa-file-pdf text-xs"></i> Exportar PDF
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="painel-metas-producao" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    </div>
-                </div>
-
+      <!-- ==================== MÓDULO 3: PRODUÇÃO & PLANIX ==================== -->
+      <div id="conteudo-producao" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 space-y-4"
+          >
+            <div class="border-b border-slate-700 pb-3">
+              <h2
+                class="text-base font-semibold text-white flex items-center gap-2"
+              >
+                <i
+                  data-lucide="clipboard-check"
+                  class="w-5 h-5 text-emerald-400"
+                ></i>
+                Apontamento de Peças & Metas
+              </h2>
+              <p class="text-xs text-slate-400">
+                Conecta a produção de peças e volume (m³) com as metas do
+                Planix.
+              </p>
             </div>
-        </div>
 
+            <form
+              id="form-meta"
+              onsubmit="enviarApontamentoMeta(event)"
+              class="space-y-3"
+            >
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1"
+                  >Responsável pelo Lançamento</label
+                >
+                <input
+                  type="text"
+                  id="meta-usuario"
+                  placeholder="Nome do Apontador / Qualidade"
+                  required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >Setor</label
+                  >
+                  <select
+                    id="meta-setor"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  >
+                    <option value="ESTRUTURA">M30 - Estrutura</option>
+                    <option value="POSTE">M31 - Poste</option>
+                    <option value="PAINEL">M32 - Painel</option>
+                    <option value="LAJE">M33 - Laje</option>
+                    <option value="OUTROS">M34 - Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >fck (MPa)</label
+                  >
+                  <input
+                    type="number"
+                    id="meta-fck"
+                    value="30"
+                    required
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1"
+                  >Descrição / Nome da Peça</label
+                >
+                <input
+                  type="text"
+                  id="meta-peca"
+                  placeholder="Ex: Poste Duplo T 11/1500"
+                  required
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                />
+              </div>
+
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >Qtd Peças</label
+                  >
+                  <input
+                    type="number"
+                    id="meta-qtd"
+                    value="1"
+                    min="1"
+                    required
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >Vol. Real (m³)</label
+                  >
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="meta-vol-real"
+                    placeholder="15.0"
+                    required
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-300 mb-1"
+                    >Meta Vol (m³)</label
+                  >
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="meta-vol-plan"
+                    placeholder="12.0"
+                    required
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2"
+              >
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Registrar
+                Apontamento
+              </button>
+            </form>
+          </div>
+
+          <div
+            class="bg-slate-800 border border-slate-700/60 rounded-xl p-5 lg:col-span-2 space-y-4"
+          >
+            <div
+              class="flex justify-between items-center border-b border-slate-700 pb-3"
+            >
+              <h2
+                class="text-base font-semibold text-white flex items-center gap-2"
+              >
+                <i
+                  data-lucide="bar-chart-2"
+                  class="w-5 h-5 text-emerald-400"
+                ></i>
+                Acompanhamento de Metas de Produção (Planix)
+              </h2>
+              <div class="flex gap-2">
+                <button
+                  onclick="exportarMetasCSV()"
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md"
+                >
+                  <i class="fa-solid fa-file-excel text-xs"></i> Exportar Excel
+                </button>
+                <button
+                  onclick="window.print()"
+                  class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-md"
+                >
+                  <i class="fa-solid fa-file-pdf text-xs"></i> Exportar PDF
+                </button>
+              </div>
+            </div>
+
+            <div
+              id="painel-metas-producao"
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            ></div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script>
-        const API_URL = window.location.origin;
-        let chartMetaVsRealInstance = null;
-        let chartSetoresInstance = null;
-        let chartVolumeInstance = null;
-        let historicoNotasGlobal = [];
-        let historicoMetasGlobal = [];
+      const API_URL = window.location.origin;
+      let chartMetaVsRealInstance = null;
+      let chartSetoresInstance = null;
+      let chartVolumeInstance = null;
+      let historicoNotasGlobal = [];
+      let historicoMetasGlobal = [];
 
-        function trocarAba(aba) {
-            document.getElementById('conteudo-ceo').classList.add('hidden');
-            document.getElementById('conteudo-ppcp').classList.add('hidden');
-            document.getElementById('conteudo-producao').classList.add('hidden');
+      function trocarAba(aba) {
+        document.getElementById("conteudo-ceo").classList.add("hidden");
+        document.getElementById("conteudo-ppcp").classList.add("hidden");
+        document.getElementById("conteudo-producao").classList.add("hidden");
 
-            ['ceo', 'ppcp', 'producao'].forEach(t => {
-                const btn = document.getElementById(`tab-${t}`);
-                btn.className = "px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
-            });
+        ["ceo", "ppcp", "producao"].forEach((t) => {
+          const btn = document.getElementById(`tab-${t}`);
+          if (btn)
+            btn.className =
+              "px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
+        });
 
-            document.getElementById(`conteudo-${aba}`).classList.remove('hidden');
-            const btnAtivo = document.getElementById(`tab-${aba}`);
-            btnAtivo.className = "px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-blue-500 text-blue-400 transition";
-        }
+        document.getElementById(`conteudo-${aba}`).classList.remove("hidden");
+        const btnAtivo = document.getElementById(`tab-${aba}`);
+        if (btnAtivo)
+          btnAtivo.className =
+            "px-5 py-3 text-sm font-semibold flex items-center gap-2 border-b-2 border-blue-500 text-blue-400 transition";
+      }
 
-        async function carregarDadosGerais() {
-            try {
-                const res = await fetch(`${API_URL}/api/estoque/centrais`);
-                if (!res.ok) throw new Error("Aguardando resposta do servidor");
+      async function carregarDadosGerais() {
+        try {
+          const timestamp = new Date().getTime();
+          const res = await fetch(
+            `${API_URL}/api/estoque/centrais?t=${timestamp}`,
+            {
+              cache: "no-store",
+              headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+            },
+          );
 
-                const data = await res.json();
+          if (!res.ok) throw new Error("Aguardando resposta do servidor");
 
-                if (data.sucesso) {
-                    atualizarCardsGlobais(data.totais_globais, data.total_pendentes);
-                    atualizarGridCentrais(data.centrais);
-                    atualizarTotaisMateriaisCLP(data.centrais);
-                    
-                    const central1 = data.centrais[1];
-                    const setorAtivo = central1 ? (central1.setor_ativo || "IDLE") : "IDLE";
-                    const isOnline = central1 ? (central1.status === "ONLINE") : false;
+          const data = await res.json();
 
-                    const statusTxt = document.getElementById("status-texto");
-                    const statusDot = document.getElementById("status-dot");
+          if (data.sucesso) {
+            atualizarCardsGlobais(data.totais_globais, data.total_pendentes);
+            atualizarGridCentrais(data.centrais);
+            atualizarTotaisMateriaisCLP(data.centrais);
 
-                    if (isOnline) {
-                        statusTxt.textContent = `CLP ONLINE (${setorAtivo})`;
-                        statusTxt.className = "text-xs font-bold text-emerald-400 tracking-wider";
-                        statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
-                    } else {
-                        statusTxt.textContent = "CLP OFFLINE";
-                        statusTxt.className = "text-xs font-bold text-rose-400 tracking-wider";
-                        statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500";
-                    }
+            const central1 = data.centrais[1];
+            const setorAtivo = central1
+              ? central1.setor_ativo || "IDLE"
+              : "IDLE";
+            const isOnline = central1 ? central1.status === "ONLINE" : false;
 
-                    destacarSetorAtivo(setorAtivo);
-                    historicoNotasGlobal = data.historico || [];
-                    atualizarTabelaHistorico(historicoNotasGlobal);
-                }
+            const statusTxt = document.getElementById("status-texto");
+            const statusDot = document.getElementById("status-dot");
+            const statusPing = document.getElementById("status-ping");
 
-                carregarCockpitCEO();
-                carregarRelatorioMetas();
-
-            } catch (err) {
-                console.error("Aviso na conexão:", err);
-                const statusTxt = document.getElementById("status-texto");
-                const statusDot = document.getElementById("status-dot");
-                if (statusTxt) {
-                    statusTxt.textContent = "RECONECTANDO...";
-                    statusTxt.className = "text-xs font-bold text-amber-400 tracking-wider";
-                }
-                if (statusDot) {
-                    statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
-                }
+            if (isOnline) {
+              if (statusTxt) {
+                statusTxt.textContent = `CLP ONLINE (${setorAtivo})`;
+                statusTxt.className =
+                  "text-xs font-bold text-emerald-400 tracking-wider";
+              }
+              if (statusDot)
+                statusDot.className =
+                  "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500";
+              if (statusPing)
+                statusPing.className =
+                  "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+            } else {
+              if (statusTxt) {
+                statusTxt.textContent = "CLP OFFLINE";
+                statusTxt.className =
+                  "text-xs font-bold text-rose-400 tracking-wider";
+              }
+              if (statusDot)
+                statusDot.className =
+                  "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500";
+              if (statusPing) statusPing.className = "hidden";
             }
+
+            destacarSetorAtivo(setorAtivo);
+            historicoNotasGlobal = data.historico || [];
+            atualizarTabelaHistorico(historicoNotasGlobal);
+          }
+
+          carregarCockpitCEO();
+          carregarRelatorioMetas();
+        } catch (err) {
+          console.error("Aviso na conexão:", err);
+          const statusTxt = document.getElementById("status-texto");
+          const statusDot = document.getElementById("status-dot");
+          if (statusTxt) {
+            statusTxt.textContent = "RECONECTANDO...";
+            statusTxt.className =
+              "text-xs font-bold text-amber-400 tracking-wider";
+          }
+          if (statusDot) {
+            statusDot.className =
+              "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
+          }
+        }
+      }
+
+      function atualizarTotaisMateriaisCLP(centrais) {
+        if (!centrais) return;
+        const c1 = centrais[1] || centrais[Object.keys(centrais)[0]] || {};
+
+        // D10 - Volume Total Geral
+        const elVolGeral = document.getElementById("tot-vol-geral");
+        if (elVolGeral) {
+          const vol = c1.volume_total_m3 || 0;
+          elVolGeral.innerText = `${vol.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³`;
         }
 
-        function atualizarTotaisMateriaisCLP(centrais) {
-            if (!centrais) return;
-            const c1 = centrais[1] || {};
+        // D154 - Número da Batelada Atual (Exibe apenas o número limpo, sem '#')
+        const elNumBatelada = document.getElementById("tot-num-batelada");
+        if (elNumBatelada) {
+          const numBat =
+            c1.numero_batelada !== undefined
+              ? c1.numero_batelada
+              : c1.num_batelada || c1.batelada;
 
-            document.getElementById("tot-pedrisco").innerText = `${(c1.pedrisco_total_kg || 0).toLocaleString('pt-BR')} kg`;
-            document.getElementById("tot-seixo-med").innerText = `${(c1.seixo_medio_total_kg || 0).toLocaleString('pt-BR')} kg`;
-            document.getElementById("tot-seixo-fin").innerText = `${(c1.seixo_fino_total_kg || 0).toLocaleString('pt-BR')} kg`;
-            document.getElementById("tot-areia").innerText = `${(c1.areia_total_kg || 0).toLocaleString('pt-BR')} kg`;
-            document.getElementById("tot-cimento").innerText = `${(c1.cimento_total_kg || 0).toLocaleString('pt-BR')} kg`;
-            document.getElementById("tot-agua").innerText = `${(c1.agua_total_l || 0).toLocaleString('pt-BR')} L`;
-            document.getElementById("tot-ad1").innerText = `${(c1.aditivo1_total_l || 0).toLocaleString('pt-BR')} L`;
-            document.getElementById("tot-ad2").innerText = `${(c1.aditivo2_total_l || 0).toLocaleString('pt-BR')} L`;
-
-            document.getElementById("umid-areia").innerText = `${(c1.umidade_areia || 0).toFixed(1)}%`;
-            document.getElementById("umid-seixo").innerText = `${(c1.umidade_seixo || 0).toFixed(1)}%`;
+          if (numBat !== undefined && numBat !== null) {
+            elNumBatelada.innerText = `${numBat}`; // Removido o '#' da string
+          } else {
+            elNumBatelada.innerText = "0";
+          }
         }
 
-        function destacarSetorAtivo(setorNome) {
-            const mapaBadges = {
-                "ESTRUTURA": "badge-m30",
-                "POSTE":     "badge-m31",
-                "PAINEL":    "badge-m32",
-                "LAJE":      "badge-m33",
-                "OUTROS":    "badge-m34"
-            };
+        // Demais registradores (D12 a D26)
+        if (document.getElementById("tot-pedrisco"))
+          document.getElementById("tot-pedrisco").innerText =
+            `${(c1.pedrisco_total_kg || 0).toLocaleString("pt-BR")} kg`;
+        if (document.getElementById("tot-seixo-med"))
+          document.getElementById("tot-seixo-med").innerText =
+            `${(c1.seixo_medio_total_kg || 0).toLocaleString("pt-BR")} kg`;
+        if (document.getElementById("tot-seixo-fin"))
+          document.getElementById("tot-seixo-fin").innerText =
+            `${(c1.seixo_fino_total_kg || 0).toLocaleString("pt-BR")} kg`;
+        if (document.getElementById("tot-areia"))
+          document.getElementById("tot-areia").innerText =
+            `${(c1.areia_total_kg || 0).toLocaleString("pt-BR")} kg`;
+        if (document.getElementById("tot-cimento"))
+          document.getElementById("tot-cimento").innerText =
+            `${(c1.cimento_total_kg || 0).toLocaleString("pt-BR")} kg`;
+        if (document.getElementById("tot-agua"))
+          document.getElementById("tot-agua").innerText =
+            `${(c1.agua_total_l || 0).toLocaleString("pt-BR")} L`;
+        if (document.getElementById("tot-ad1"))
+          document.getElementById("tot-ad1").innerText =
+            `${(c1.aditivo1_total_l || 0).toLocaleString("pt-BR")} L`;
+        if (document.getElementById("tot-ad2"))
+          document.getElementById("tot-ad2").innerText =
+            `${(c1.aditivo2_total_l || 0).toLocaleString("pt-BR")} L`;
 
-            const mapaCards = {
-                "ESTRUTURA": "card-sector-m30",
-                "POSTE":     "card-sector-m31",
-                "PAINEL":    "card-sector-m32",
-                "LAJE":      "card-sector-m33",
-                "OUTROS":    "card-sector-m34"
-            };
+        if (document.getElementById("umid-areia"))
+          document.getElementById("umid-areia").innerText =
+            `${(c1.umidade_areia || 0).toFixed(1)}%`;
+        if (document.getElementById("umid-seixo"))
+          document.getElementById("umid-seixo").innerText =
+            `${(c1.umidade_seixo || 0).toFixed(1)}%`;
+      }
+      function destacarSetorAtivo(setorNome) {
+        const mapaBadges = {
+          ESTRUTURA: "badge-m30",
+          POSTE: "badge-m31",
+          PAINEL: "badge-m32",
+          LAJE: "badge-m33",
+          OUTROS: "badge-m34",
+        };
 
-            Object.keys(mapaBadges).forEach(s => {
-                const badge = document.getElementById(mapaBadges[s]);
-                const card = document.getElementById(mapaCards[s]);
-                const isCurrent = setorNome.toUpperCase().includes(s);
+        const mapaCards = {
+          ESTRUTURA: "card-sector-m30",
+          POSTE: "card-sector-m31",
+          PAINEL: "card-sector-m32",
+          LAJE: "card-sector-m33",
+          OUTROS: "card-sector-m34",
+        };
 
-                if (badge) {
-                    if (isCurrent) {
-                        badge.classList.remove("hidden");
-                    } else {
-                        badge.classList.add("hidden");
-                    }
-                }
+        Object.keys(mapaBadges).forEach((s) => {
+          const badge = document.getElementById(mapaBadges[s]);
+          const card = document.getElementById(mapaCards[s]);
+          const isCurrent = setorNome.toUpperCase().includes(s);
 
-                if (card) {
-                    if (isCurrent) {
-                        card.classList.add("ring-2", "ring-emerald-400", "bg-slate-800/90");
-                    } else {
-                        card.classList.remove("ring-2", "ring-emerald-400", "bg-slate-800/90");
-                    }
-                }
-            });
-        }
-
-        function atualizarCardsGlobais(totais, pendentes) {
-            if (!totais) return;
-            if (totais.total_cimento_kg > 0) {
-                document.getElementById("card-cimento").textContent = `${totais.total_cimento_kg.toLocaleString('pt-BR')} kg`;
+          if (badge) {
+            if (isCurrent) {
+              badge.classList.remove("hidden");
+            } else {
+              badge.classList.add("hidden");
             }
-            if (totais.total_aditivo1_l > 0) {
-                document.getElementById("card-aditivo1").textContent = `${totais.total_aditivo1_l.toLocaleString('pt-BR')} L`;
+          }
+
+          if (card) {
+            if (isCurrent) {
+              card.classList.add(
+                "ring-2",
+                "ring-emerald-400",
+                "bg-slate-800/90",
+              );
+            } else {
+              card.classList.remove(
+                "ring-2",
+                "ring-emerald-400",
+                "bg-slate-800/90",
+              );
             }
-            if (totais.total_aditivo2_l > 0) {
-                document.getElementById("card-aditivo2").textContent = `${totais.total_aditivo2_l.toLocaleString('pt-BR')} L`;
-            }
-            document.getElementById("card-pendentes").textContent = pendentes || 0;
-        }
+          }
+        });
+      }
 
-        function atualizarGridCentrais(centrais) {
-            const container = document.getElementById("grid-centrais");
-            if (!centrais) return;
-            container.innerHTML = "";
+      function atualizarCardsGlobais(totais, pendentes) {
+        if (!totais) return;
+        document.getElementById("card-cimento").textContent =
+          `${(totais.total_cimento_kg || 0).toLocaleString("pt-BR")} kg`;
+        document.getElementById("card-aditivo1").textContent =
+          `${(totais.total_aditivo1_l || 0).toLocaleString("pt-BR")} L`;
+        document.getElementById("card-aditivo2").textContent =
+          `${(totais.total_aditivo2_l || 0).toLocaleString("pt-BR")} L`;
+        document.getElementById("card-pendentes").textContent = pendentes || 0;
+      }
 
-            Object.keys(centrais).forEach(id => {
-                const c = centrais[id];
-                const isOnline = c.status === "ONLINE";
+      function atualizarGridCentrais(centrais) {
+        const container = document.getElementById("grid-centrais");
+        if (!centrais || !container) return;
+        container.innerHTML = "";
 
-                const cardHTML = `
-                    <div class="bg-slate-900/80 border ${isOnline ? 'border-emerald-500/30' : 'border-rose-500/30'} rounded-xl p-4 space-y-3">
+        Object.keys(centrais).forEach((id) => {
+          const c = centrais[id];
+          const isOnline = c.status === "ONLINE";
+
+          const cardHTML = `
+                    <div class="bg-slate-900/80 border ${isOnline ? "border-emerald-500/30" : "border-rose-500/30"} rounded-xl p-4 space-y-3">
                         <div class="flex justify-between items-center">
                             <span class="text-xs font-bold text-white">${c.nome}</span>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isOnline ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isOnline ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}">
                                 ${c.status}
                             </span>
                         </div>
                         <div class="space-y-1 text-xs">
                             <div class="flex justify-between text-slate-400">
                                 <span>Setor Ativo:</span>
-                                <span class="font-bold text-emerald-400">${c.setor_ativo || 'IDLE'}</span>
+                                <span class="font-bold text-emerald-400">${c.setor_ativo || "IDLE"}</span>
                             </div>
                             <div class="flex justify-between text-slate-400">
                                 <span>Status CLP [M36]:</span>
-                                <span class="font-bold ${c.clp_on ? 'text-emerald-400' : 'text-slate-400'}">${c.clp_on ? 'LIGADO (ON)' : 'DESLIGADO'}</span>
+                                <span class="font-bold ${c.clp_on ? "text-emerald-400" : "text-slate-400"}">${c.clp_on ? "LIGADO (ON)" : "DESLIGADO"}</span>
                             </div>
                             <div class="flex justify-between text-slate-400">
-                                <span>Cimento:</span>
-                                <span class="font-bold text-slate-200">${(c.cimento_kg || 0).toLocaleString()} kg</span>
+                                <span>Silo Cimento:</span>
+                                <span class="font-bold text-slate-200">${(c.cimento_kg || 0).toLocaleString("pt-BR")} kg</span>
                             </div>
                             <div class="flex justify-between text-slate-400">
                                 <span>Aditivo 1:</span>
-                                <span class="font-bold text-purple-300">${(c.aditivo1_l || 0).toLocaleString()} L</span>
+                                <span class="font-bold text-purple-300">${(c.aditivo1_l || 0).toLocaleString("pt-BR")} L</span>
                             </div>
                             <div class="flex justify-between text-slate-400">
                                 <span>Aditivo 2:</span>
-                                <span class="font-bold text-indigo-300">${(c.aditivo2_l || 0).toLocaleString()} L</span>
+                                <span class="font-bold text-indigo-300">${(c.aditivo2_l || 0).toLocaleString("pt-BR")} L</span>
                             </div>
                         </div>
                     </div>
                 `;
-                container.innerHTML += cardHTML;
-            });
+          container.innerHTML += cardHTML;
+        });
+      }
+
+      async function carregarCockpitCEO() {
+        try {
+          const timestamp = new Date().getTime();
+          const res = await fetch(
+            `${API_URL}/api/relatorios/consumo-setor?t=${timestamp}`,
+          );
+          const data = await res.json();
+
+          if (data.sucesso && data.consumo_por_setor) {
+            const c = data.consumo_por_setor;
+
+            atualizarCardM(
+              "ceo-m30",
+              c.ESTRUTURA || { volume_m3: 0, cimento_kg: 0 },
+            );
+            atualizarCardM(
+              "ceo-m31",
+              c.POSTE || { volume_m3: 0, cimento_kg: 0 },
+            );
+            atualizarCardM(
+              "ceo-m32",
+              c.PAINEL || { volume_m3: 0, cimento_kg: 0 },
+            );
+            atualizarCardM(
+              "ceo-m33",
+              c.LAJE || { volume_m3: 0, cimento_kg: 0 },
+            );
+            atualizarCardM(
+              "ceo-m34",
+              c.OUTROS || { volume_m3: 0, cimento_kg: 0 },
+            );
+
+            const setores = [
+              "M30 Estrutura",
+              "M31 Poste",
+              "M32 Painel",
+              "M33 Laje",
+              "M34 Outros",
+            ];
+            const cimentos = [
+              c.ESTRUTURA?.cimento_kg || 0,
+              c.POSTE?.cimento_kg || 0,
+              c.PAINEL?.cimento_kg || 0,
+              c.LAJE?.cimento_kg || 0,
+              c.OUTROS?.cimento_kg || 0,
+            ];
+            const volumes = [
+              c.ESTRUTURA?.volume_m3 || 0,
+              c.POSTE?.volume_m3 || 0,
+              c.PAINEL?.volume_m3 || 0,
+              c.LAJE?.volume_m3 || 0,
+              c.OUTROS?.volume_m3 || 0,
+            ];
+
+            renderizarGraficoSetores(setores, cimentos);
+            renderizarGraficoVolume(setores, volumes);
+          }
+        } catch (e) {
+          console.error("Erro Cockpit CEO:", e);
         }
+      }
 
-        async function carregarCockpitCEO() {
-            try {
-                const res = await fetch(`${API_URL}/api/relatorios/consumo-setor`);
-                const data = await res.json();
+      function atualizarCardM(idPrefix, dados) {
+        if (!dados) return;
+        const vol = (dados.volume_m3 || 0).toFixed(1);
+        const cim = (dados.cimento_kg || 0).toLocaleString("pt-BR");
 
-                if (data.sucesso && data.consumo_por_setor) {
-                    const c = data.consumo_por_setor;
+        const elVol = document.getElementById(`${idPrefix}-vol`);
+        const elCim = document.getElementById(`${idPrefix}-cim`);
 
-                    atualizarCardM("ceo-m30", c.ESTRUTURA || { volume_m3: 0, cimento_kg: 0 });
-                    atualizarCardM("ceo-m31", c.POSTE || { volume_m3: 0, cimento_kg: 0 });
-                    atualizarCardM("ceo-m32", c.PAINEL || { volume_m3: 0, cimento_kg: 0 });
-                    atualizarCardM("ceo-m33", c.LAJE || { volume_m3: 0, cimento_kg: 0 });
-                    atualizarCardM("ceo-m34", c.OUTROS || { volume_m3: 0, cimento_kg: 0 });
+        if (elVol) elVol.textContent = `${vol} m³`;
+        if (elCim) elCim.textContent = `${cim} kg cimento`;
+      }
 
-                    const setores = ["M30 Estrutura", "M31 Poste", "M32 Painel", "M33 Laje", "M34 Outros"];
-                    const cimentos = [
-                        c.ESTRUTURA?.cimento_kg || 0,
-                        c.POSTE?.cimento_kg || 0,
-                        c.PAINEL?.cimento_kg || 0,
-                        c.LAJE?.cimento_kg || 0,
-                        c.OUTROS?.cimento_kg || 0
-                    ];
-                    const volumes = [
-                        c.ESTRUTURA?.volume_m3 || 0,
-                        c.POSTE?.volume_m3 || 0,
-                        c.PAINEL?.volume_m3 || 0,
-                        c.LAJE?.volume_m3 || 0,
-                        c.OUTROS?.volume_m3 || 0
-                    ];
+      async function carregarRelatorioMetas() {
+        try {
+          const timestamp = new Date().getTime();
+          const res = await fetch(
+            `${API_URL}/api/relatorios/metas-desempenho?t=${timestamp}`,
+          );
+          const data = await res.json();
 
-                    renderizarGraficoSetores(setores, cimentos);
-                    renderizarGraficoVolume(setores, volumes);
-                }
-            } catch (e) {
-                console.error("Erro Cockpit CEO:", e);
-            }
-        }
+          if (data.sucesso) {
+            historicoMetasGlobal = data.historico_lancamentos || [];
+            const d = data.desempenho_por_setor;
 
-        function atualizarCardM(idPrefix, dados) {
-            if (!dados) return;
-            const vol = (dados.volume_m3 || 0).toFixed(1);
-            const cim = (dados.cimento_kg || 0).toLocaleString('pt-BR');
-            
-            const elVol = document.getElementById(`${idPrefix}-vol`);
-            const elCim = document.getElementById(`${idPrefix}-cim`);
+            const setores = ["ESTRUTURA", "POSTE", "PAINEL", "LAJE", "OUTROS"];
+            const planejado = setores.map(
+              (s) => d[s]?.volume_planejado_m3 || 0,
+            );
+            const realizado = setores.map(
+              (s) => d[s]?.volume_realizado_m3 || 0,
+            );
 
-            if (elVol) elVol.textContent = `${vol} m³`;
-            if (elCim) elCim.textContent = `${cim} kg cimento`;
-        }
+            renderizarGraficoMetaVsReal(setores, planejado, realizado);
 
-        async function carregarRelatorioMetas() {
-            try {
-                const res = await fetch(`${API_URL}/api/relatorios/metas-desempenho`);
-                const data = await res.json();
+            const containerProd = document.getElementById(
+              "painel-metas-producao",
+            );
+            if (containerProd) {
+              containerProd.innerHTML = "";
 
-                if (data.sucesso) {
-                    historicoMetasGlobal = data.historico_lancamentos || [];
-                    const d = data.desempenho_por_setor;
+              let totalPlan = 0;
+              let totalReal = 0;
 
-                    const setores = ["ESTRUTURA", "POSTE", "PAINEL", "LAJE", "OUTROS"];
-                    const planejado = setores.map(s => d[s]?.volume_planejado_m3 || 0);
-                    const realizado = setores.map(s => d[s]?.volume_realizado_m3 || 0);
+              setores.forEach((s) => {
+                const item = d[s] || {
+                  volume_planejado_m3: 0,
+                  volume_realizado_m3: 0,
+                  percentual_meta: 0,
+                };
+                totalPlan += item.volume_planejado_m3;
+                totalReal += item.volume_realizado_m3;
 
-                    renderizarGraficoMetaVsReal(setores, planejado, realizado);
+                const pct = item.percentual_meta;
+                let corBarra = "bg-emerald-500";
+                if (pct < 80) corBarra = "bg-rose-500";
+                else if (pct < 100) corBarra = "bg-amber-500";
 
-                    const containerProd = document.getElementById("painel-metas-producao");
-                    containerProd.innerHTML = "";
-
-                    let totalPlan = 0;
-                    let totalReal = 0;
-
-                    setores.forEach(s => {
-                        const item = d[s] || { volume_planejado_m3: 0, volume_realizado_m3: 0, percentual_meta: 0 };
-                        totalPlan += item.volume_planejado_m3;
-                        totalReal += item.volume_realizado_m3;
-
-                        const pct = item.percentual_meta;
-                        let corBarra = "bg-emerald-500";
-                        if (pct < 80) corBarra = "bg-rose-500";
-                        else if (pct < 100) corBarra = "bg-amber-500";
-
-                        containerProd.innerHTML += `
-                            <div class="bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 space-y-2">
-                                <div class="flex justify-between items-center text-xs">
-                                    <span class="font-bold text-white">${s}</span>
-                                    <span class="font-bold text-slate-300">${pct}%</span>
+                containerProd.innerHTML += `
+                                <div class="bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 space-y-2">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="font-bold text-white">${s}</span>
+                                        <span class="font-bold text-slate-300">${pct}%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                        <div class="${corBarra} h-full" style="width: ${Math.min(pct, 100)}%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[11px] text-slate-400">
+                                        <span>Real: <strong class="text-white">${item.volume_realizado_m3} m³</strong></span>
+                                        <span>Meta: <strong class="text-slate-300">${item.volume_planejado_m3} m³</strong></span>
+                                    </div>
                                 </div>
-                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div class="${corBarra} h-full" style="width: ${Math.min(pct, 100)}%"></div>
-                                </div>
-                                <div class="flex justify-between text-[11px] text-slate-400">
-                                    <span>Real: <strong class="text-white">${item.volume_realizado_m3} m³</strong></span>
-                                    <span>Meta: <strong class="text-slate-300">${item.volume_planejado_m3} m³</strong></span>
-                                </div>
-                            </div>
-                        `;
-                    });
+                            `;
+              });
 
-                    const pctGlobal = totalPlan > 0 ? ((totalReal / totalPlan) * 100).toFixed(1) : "0";
-                    document.getElementById("card-meta-global").textContent = `${pctGlobal}%`;
-                }
-            } catch (e) {
-                console.error("Erro ao carregar metas:", e);
+              const pctGlobal =
+                totalPlan > 0
+                  ? ((totalReal / totalPlan) * 100).toFixed(1)
+                  : "0";
+              document.getElementById("card-meta-global").textContent =
+                `${pctGlobal}%`;
             }
+          }
+        } catch (e) {
+          console.error("Erro ao carregar metas:", e);
+        }
+      }
+
+      function renderizarGraficoMetaVsReal(labels, plan, real) {
+        const el = document.getElementById("chartMetaVsReal");
+        if (!el) return;
+        const ctx = el.getContext("2d");
+        if (chartMetaVsRealInstance) chartMetaVsRealInstance.destroy();
+
+        chartMetaVsRealInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Meta (m³)",
+                data: plan,
+                backgroundColor: "#3b82f6",
+                borderRadius: 4,
+              },
+              {
+                label: "Realizado (m³)",
+                data: real,
+                backgroundColor: "#10b981",
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: "#94a3b8", font: { size: 10 } } },
+            },
+            scales: {
+              x: {
+                ticks: { color: "#94a3b8", font: { size: 9 } },
+                grid: { display: false },
+              },
+              y: {
+                ticks: { color: "#94a3b8", font: { size: 9 } },
+                grid: { color: "#334155" },
+              },
+            },
+          },
+        });
+      }
+
+      function renderizarGraficoSetores(labels, dataValues) {
+        const el = document.getElementById("chartSetores");
+        if (!el) return;
+        const ctx = el.getContext("2d");
+        if (chartSetoresInstance) chartSetoresInstance.destroy();
+
+        chartSetoresInstance = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                data: dataValues,
+                backgroundColor: [
+                  "#3b82f6",
+                  "#06b6d4",
+                  "#6366f1",
+                  "#10b981",
+                  "#a855f7",
+                ],
+                borderWidth: 2,
+                borderColor: "#0f172a",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: "70%",
+          },
+        });
+      }
+
+      function renderizarGraficoVolume(labels, dataValues) {
+        const el = document.getElementById("chartVolume");
+        if (!el) return;
+        const ctx = el.getContext("2d");
+        if (chartVolumeInstance) chartVolumeInstance.destroy();
+
+        chartVolumeInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Volume (m³)",
+                data: dataValues,
+                backgroundColor: "#60a5fa",
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                ticks: { color: "#94a3b8", font: { size: 9 } },
+                grid: { display: false },
+              },
+              y: {
+                ticks: { color: "#94a3b8", font: { size: 9 } },
+                grid: { color: "#334155" },
+              },
+            },
+          },
+        });
+      }
+
+      async function enviarAbastecimento(event) {
+        event.preventDefault();
+        const payload = {
+          central_id: parseInt(document.getElementById("ppcp-central").value),
+          insumo: document.getElementById("ppcp-insumo").value,
+          quantidade: parseInt(
+            document.getElementById("ppcp-quantidade").value,
+          ),
+          numero_nota: document.getElementById("ppcp-nota").value,
+          usuario:
+            document.getElementById("ppcp-usuario").value || "Operador PPCP",
+        };
+
+        try {
+          const res = await fetch(`${API_URL}/api/abastecimento/enviar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert(data.mensagem);
+            document.getElementById("form-abastecimento").reset();
+            carregarDadosGerais();
+          } else {
+            alert(`Erro: ${data.detail}`);
+          }
+        } catch (e) {
+          alert("Falha ao enviar abastecimento.");
+        }
+      }
+
+      async function enviarApontamentoMeta(event) {
+        event.preventDefault();
+        const payload = {
+          setor: document.getElementById("meta-setor").value,
+          peca_nome: document.getElementById("meta-peca").value,
+          fck_mpa: parseInt(document.getElementById("meta-fck").value),
+          qtd_pecas: parseInt(document.getElementById("meta-qtd").value),
+          volume_m3: parseFloat(document.getElementById("meta-vol-real").value),
+          meta_volume_m3: parseFloat(
+            document.getElementById("meta-vol-plan").value,
+          ),
+          usuario:
+            document.getElementById("meta-usuario").value ||
+            "Operador Produção",
+        };
+
+        try {
+          const res = await fetch(`${API_URL}/api/producao/apontar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert(data.mensagem);
+            document.getElementById("form-meta").reset();
+            carregarDadosGerais();
+          } else {
+            alert(`Erro: ${data.detail}`);
+          }
+        } catch (e) {
+          alert("Falha ao enviar apontamento.");
+        }
+      }
+
+      function atualizarTabelaHistorico(historico) {
+        const tbody = document.getElementById("tabela-historico");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        if (!historico || historico.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+          return;
         }
 
-        function renderizarGraficoMetaVsReal(labels, plan, real) {
-            const ctx = document.getElementById('chartMetaVsReal').getContext('2d');
-            if (chartMetaVsRealInstance) chartMetaVsRealInstance.destroy();
-
-            chartMetaVsRealInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Meta (m³)', data: plan, backgroundColor: '#3b82f6', borderRadius: 4 },
-                        { label: 'Realizado (m³)', data: real, backgroundColor: '#10b981', borderRadius: 4 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
-                        y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#334155' } }
-                    }
-                }
-            });
-        }
-
-        function renderizarGraficoSetores(labels, dataValues) {
-            const ctx = document.getElementById('chartSetores').getContext('2d');
-            if (chartSetoresInstance) chartSetoresInstance.destroy();
-
-            chartSetoresInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: dataValues,
-                        backgroundColor: ['#3b82f6', '#06b6d4', '#6366f1', '#10b981', '#a855f7'],
-                        borderWidth: 2,
-                        borderColor: '#0f172a'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    cutout: '70%'
-                }
-            });
-        }
-
-        function renderizarGraficoVolume(labels, dataValues) {
-            const ctx = document.getElementById('chartVolume').getContext('2d');
-            if (chartVolumeInstance) chartVolumeInstance.destroy();
-
-            chartVolumeInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Volume (m³)',
-                        data: dataValues,
-                        backgroundColor: '#60a5fa',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
-                        y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#334155' } }
-                    }
-                }
-            });
-        }
-
-        async function enviarAbastecimento(event) {
-            event.preventDefault();
-            const payload = {
-                central_id: parseInt(document.getElementById("ppcp-central").value),
-                insumo: document.getElementById("ppcp-insumo").value,
-                quantidade: parseInt(document.getElementById("ppcp-quantidade").value),
-                numero_nota: document.getElementById("ppcp-nota").value,
-                usuario: document.getElementById("ppcp-usuario").value || "Operador PPCP"
-            };
-
-            try {
-                const res = await fetch(`${API_URL}/api/abastecimento/enviar`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    alert(data.mensagem);
-                    document.getElementById("form-abastecimento").reset();
-                    carregarDadosGerais();
-                } else {
-                    alert(`Erro: ${data.detail}`);
-                }
-            } catch (e) {
-                alert("Falha ao enviar abastecimento.");
-            }
-        }
-
-        async function enviarApontamentoMeta(event) {
-            event.preventDefault();
-            const payload = {
-                setor: document.getElementById("meta-setor").value,
-                peca_nome: document.getElementById("meta-peca").value,
-                fck_mpa: parseInt(document.getElementById("meta-fck").value),
-                qtd_pecas: parseInt(document.getElementById("meta-qtd").value),
-                volume_m3: parseFloat(document.getElementById("meta-vol-real").value),
-                meta_volume_m3: parseFloat(document.getElementById("meta-vol-plan").value),
-                usuario: document.getElementById("meta-usuario").value || "Operador Produção"
-            };
-
-            try {
-                const res = await fetch(`${API_URL}/api/producao/apontar`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    alert(data.mensagem);
-                    document.getElementById("form-meta").reset();
-                    carregarDadosGerais();
-                } else {
-                    alert(`Erro: ${data.detail}`);
-                }
-            } catch (e) {
-                alert("Falha ao enviar apontamento.");
-            }
-        }
-
-        function atualizarTabelaHistorico(historico) {
-            const tbody = document.getElementById("tabela-historico");
-            tbody.innerHTML = "";
-
-            if (!historico || historico.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
-                return;
-            }
-
-            historico.forEach(item => {
-                const dataFmt = new Date(item.data_hora).toLocaleString('pt-BR');
-                tbody.innerHTML += `
+        historico.forEach((item) => {
+          const dataFmt = new Date(item.data_hora).toLocaleString("pt-BR");
+          tbody.innerHTML += `
                     <tr class="hover:bg-slate-700/30 transition">
                         <td class="py-2 px-3">${dataFmt}</td>
                         <td class="py-2 px-3">Central 0${item.central_id}</td>
-                        <td class="py-2 px-3 font-semibold text-white">${item.numero_nota || 'N/A'}</td>
+                        <td class="py-2 px-3 font-semibold text-white">${item.numero_nota || "N/A"}</td>
                         <td class="py-2 px-3 uppercase text-blue-400">${item.insumo}</td>
-                        <td class="py-2 px-3 font-bold text-slate-200">${(item.quantidade || 0).toLocaleString()}</td>
-                        <td class="py-2 px-3 text-slate-300 font-medium">${item.usuario || 'Operador'}</td>
+                        <td class="py-2 px-3 font-bold text-slate-200">${(item.quantidade || 0).toLocaleString("pt-BR")}</td>
+                        <td class="py-2 px-3 text-slate-300 font-medium">${item.usuario || "Operador"}</td>
                     </tr>
                 `;
-            });
-        }
+        });
+      }
 
-        function exportarNotasCSV() {
-            if (!historicoNotasGlobal.length) return alert("Sem dados de notas para exportar.");
-            let csv = "Data/Hora,Central,Nota Fiscal,Insumo,Quantidade,Responsavel\n";
-            historicoNotasGlobal.forEach(i => {
-                csv += `"${i.data_hora}","Central 0${i.central_id}","${i.numero_nota}","${i.insumo}",${i.quantidade},"${i.usuario || 'Operador'}"\n`;
-            });
-            baixarArquivo(csv, `relatorio_notas_ppcp_${new Date().toISOString().slice(0,10)}.csv`);
-        }
+      function exportarNotasCSV() {
+        if (!historicoNotasGlobal.length)
+          return alert("Sem dados de notas para exportar.");
+        let csv =
+          "Data/Hora,Central,Nota Fiscal,Insumo,Quantidade,Responsavel\n";
+        historicoNotasGlobal.forEach((i) => {
+          csv += `"${i.data_hora}","Central 0${i.central_id}","${i.numero_nota}","${i.insumo}",${i.quantidade},"${i.usuario || "Operador"}"\n`;
+        });
+        baixarArquivo(
+          csv,
+          `relatorio_notas_ppcp_${new Date().toISOString().slice(0, 10)}.csv`,
+        );
+      }
 
-        function exportarMetasCSV() {
-            if (!historicoMetasGlobal.length) return alert("Sem dados de metas para exportar.");
-            let csv = "Data,Setor,Peca,FCK (MPa),Quantidade,Volume Realizado (m3),Meta Volume (m3),Atingimento (%),Responsavel\n";
-            historicoMetasGlobal.forEach(m => {
-                csv += `"${m.data}","${m.setor}","${m.peca_nome}",${m.fck_mpa},${m.qtd_pecas},${m.volume_m3},${m.meta_volume_m3},${m.percentual_meta}%,"${m.usuario || 'Operador'}"\n`;
-            });
-            baixarArquivo(csv, `relatorio_metas_planix_${new Date().toISOString().slice(0,10)}.csv`);
-        }
+      function exportarMetasCSV() {
+        if (!historicoMetasGlobal.length)
+          return alert("Sem dados de metas para exportar.");
+        let csv =
+          "Data,Setor,Peca,FCK (MPa),Quantidade,Volume Realizado (m3),Meta Volume (m3),Atingimento (%),Responsavel\n";
+        historicoMetasGlobal.forEach((m) => {
+          csv += `"${m.data}","${m.setor}","${m.peca_nome}",${m.fck_mpa},${m.qtd_pecas},${m.volume_m3},${m.meta_volume_m3},${m.percentual_meta}%,"${m.usuario || "Operador"}"\n`;
+        });
+        baixarArquivo(
+          csv,
+          `relatorio_metas_planix_${new Date().toISOString().slice(0, 10)}.csv`,
+        );
+      }
 
-        function baixarArquivo(conteudo, nomeArquivo) {
-            const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", nomeArquivo);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+      function baixarArquivo(conteudo, nomeArquivo) {
+        const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", nomeArquivo);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
 
-        window.onload = () => {
-            lucide.createIcons();
-            carregarDadosGerais();
-            setInterval(carregarDadosGerais, 5000);
-        };
+      window.onload = () => {
+        if (window.lucide) lucide.createIcons();
+        carregarDadosGerais();
+        setInterval(carregarDadosGerais, 3000);
+      };
     </script>
-</body>
+  </body>
 </html>

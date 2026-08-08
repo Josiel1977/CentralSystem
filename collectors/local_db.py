@@ -1,10 +1,11 @@
-import sqlite3
 import json
 import logging
+import sqlite3
 from datetime import datetime, timezone
 
 logger = logging.getLogger("LocalDB")
 DB_FILE = "local_cache.db"
+
 
 def init_local_db():
     """Inicializa as tabelas de cache e fila offline local"""
@@ -22,28 +23,37 @@ def init_local_db():
         conn.commit()
         logger.info("Banco de dados SQLite local (local_cache.db) inicializado.")
 
+
 def salvar_registro_offline(tabela: str, dados: dict):
     """Salva o lançamento/batelada no banco SQLite local para envio posterior à Nuvem"""
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO sync_queue (tabela, payload, criado_em) VALUES (?, ?, ?)",
-            (tabela, json.dumps(dados), datetime.now(timezone.utc).isoformat())
+            (tabela, json.dumps(dados), datetime.now(timezone.utc).isoformat()),
         )
         conn.commit()
-        logger.info("💾 Registro salvo no cache local SQLite (Aguardando sincronização com a Nuvem).")
+        logger.info(
+            "💾 Registro salvo no cache local SQLite (Aguardando sincronização com a Nuvem)."
+        )
+
 
 def obter_registros_pendentes(limit=20):
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, tabela, payload FROM sync_queue WHERE status = 'PENDENTE' ORDER BY id ASC LIMIT ?", (limit,))
+        cursor.execute(
+            "SELECT id, tabela, payload FROM sync_queue WHERE status = 'PENDENTE' ORDER BY id ASC LIMIT ?",
+            (limit,),
+        )
         return cursor.fetchall()
+
 
 def marcar_como_sincronizado(registro_id: int):
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM sync_queue WHERE id = ?", (registro_id,))
         conn.commit()
+
 
 def sincronizar_backlog_com_nuvem(supabase_client):
     """Sincroniza os registros acumulados no SQLite local com o Supabase quando houver internet"""
@@ -54,14 +64,34 @@ def sincronizar_backlog_com_nuvem(supabase_client):
     if not pendentes:
         return
 
-    logger.info(f"🌐 Conexão ativa! Sincronizando {len(pendentes)} registros do SQLite local para o Supabase...")
-    
+    logger.info(
+        f"🌐 Conexão ativa! Sincronizando {len(pendentes)} registros do SQLite local para o Supabase..."
+    )
+
     for item_id, tabela, payload_str in pendentes:
         try:
             dados = json.loads(payload_str)
-            supabase_client.table(tabela).insert(dados).execute()
+
+            # Para a tabela de estado da central, usa UPSERT para atualizar o registro existente (evita 409 Conflict)
+            if tabela == "estoque_centrais":
+                supabase_client.table(tabela).upsert(dados).execute()
+            else:
+                supabase_client.table(tabela).insert(dados).execute()
+
             marcar_como_sincronizado(item_id)
-            logger.info(f"✅ Item #{item_id} sincronizado com a nuvem e removido da fila local.")
+            logger.info(
+                f"✅ Item #{item_id} ({tabela}) sincronizado com a nuvem e removido da fila local."
+            )
         except Exception as err:
-            logger.warning(f"⚠️ Falha ao sincronizar item #{item_id}: {err}. Retentará no próximo ciclo.")
-            break
+            err_str = str(err)
+            # Se for um erro de duplicidade que ficou preso no SQLite, limpa o item antigo acumulado
+            if "23505" in err_str or "duplicate key" in err_str or "409" in err_str:
+                marcar_como_sincronizado(item_id)
+                logger.info(
+                    f"🧹 Item #{item_id} descartado do SQLite por já existir na nuvem."
+                )
+            else:
+                logger.warning(
+                    f"⚠️ Falha ao sincronizar item #{item_id}: {err}. Retentará no próximo ciclo."
+                )
+                break
